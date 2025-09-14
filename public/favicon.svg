@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <!-- Light gray background with rounded corners -->
+  <rect width="64" height="64" rx="8" fill="#F3F4F6"/>
+  
+  <!-- Yoga meditation silhouette -->
+  <g transform="translate(32, 34)">
+    <!-- Lotus base petals - darker gray -->
+    <ellipse cx="-10" cy="6" rx="8" ry="4" fill="#9CA3AF" opacity="0.6" transform="rotate(-20 -10 6)"/>
+    <ellipse cx="10" cy="6" rx="8" ry="4" fill="#9CA3AF" opacity="0.6" transform="rotate(20 10 6)"/>
+    <ellipse cx="0" cy="8" rx="10" ry="4" fill="#9CA3AF" opacity="0.5"/>
+    
+    <!-- Person in meditation pose - dark gray -->
+    <g fill="#4B5563">
+      <!-- Head -->
+      <circle cx="0" cy="-12" r="5"/>
+      
+      <!-- Body -->
+      <path d="M 0,-7 C -2,-7 -3,-5 -3,-3 L -3,2 C -3,3 -2,4 0,4 C 2,4 3,3 3,2 L 3,-3 C 3,-5 2,-7 0,-7 Z"/>
+      
+      <!-- Arms in meditation position -->
+      <ellipse cx="-7" cy="-2" rx="3" ry="8" transform="rotate(-45 -7 -2)" opacity="0.9"/>
+      <ellipse cx="7" cy="-2" rx="3" ry="8" transform="rotate(45 7 -2)" opacity="0.9"/>
+      
+      <!-- Crossed legs -->
+      <path d="M -3,2 C -5,2 -8,3 -10,5 C -10,6 -9,7 -7,7 C -5,7 -3,6 -2,4 Z" opacity="0.9"/>
+      <path d="M 3,2 C 5,2 8,3 10,5 C 10,6 9,7 7,7 C 5,7 3,6 2,4 Z" opacity="0.9"/>
+    </g>
+    
+    <!-- Inner peace circle - white glow effect -->
+    <circle cx="0" cy="-2" r="12" fill="white" opacity="0.3"/>
+    <circle cx="0" cy="-2" r="8" fill="white" opacity="0.2"/>
+  </g>
+  
+  <!-- Decorative corner dots - medium gray -->
+  <circle cx="8" cy="8" r="1.5" fill="#9CA3AF" opacity="0.4"/>
+  <circle cx="56" cy="8" r="1.5" fill="#9CA3AF" opacity="0.4"/>
+  <circle cx="8" cy="56" r="1.5" fill="#9CA3AF" opacity="0.4"/>
+  <circle cx="56" cy="56" r="1.5" fill="#9CA3AF" opacity="0.4"/>
+</svg>
