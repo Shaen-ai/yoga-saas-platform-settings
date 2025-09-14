@@ -25,7 +25,6 @@ import {
   Tooltip
 } from '@mui/material';
 import {
-  Dashboard as LayoutIcon,
   Palette as PaletteIcon,
   CalendarMonth as CalendarIcon,
   Save as SaveIcon,
@@ -37,14 +36,13 @@ import {
   FormatSize as FormatSizeIcon,
   CheckCircle as CheckIcon,
   Info as InfoIcon,
-  BorderStyle as BorderIcon
+  BorderStyle as BorderIcon,
+  Dashboard as DashboardIcon
 } from '@mui/icons-material';
 import { ChromePicker } from 'react-color';
-import axios from 'axios';
 import { ToastProvider, useToast } from './hooks/useToast';
+import { settingsAPI } from './services/api';
 import './App.css';
-
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000/api';
 
 // Professional Color Palette
 const COLOR_PRESETS = [
@@ -136,29 +134,32 @@ function AppContent() {
 
   const loadSettings = async () => {
     try {
-      const response = await axios.get(`${API_URL}/settings/ui-preferences`);
-      if (response.data) {
+      const data = await settingsAPI.getUIPreferences();
+      if (data) {
         setSettings((prev: any) => ({
           ...prev,
-          ...response.data
+          ...data
         }));
       }
     } catch (error) {
       console.error('Failed to load settings:', error);
+      showError('Failed to load settings');
     }
   };
 
   const saveSettings = async () => {
     setIsSaving(true);
     try {
-      await axios.post(`${API_URL}/settings/ui-preferences`, settings);
+      await settingsAPI.saveUIPreferences(settings);
       setShowSuccessMessage(true);
       showSuccess('Settings saved successfully');
       setTimeout(() => setShowSuccessMessage(false), 3000);
     } catch (error) {
+      console.error('Failed to save settings:', error);
       showError('Failed to save settings');
+    } finally {
+      setIsSaving(false);
     }
-    setIsSaving(false);
   };
 
   const resetSettings = () => {
@@ -182,56 +183,65 @@ function AppContent() {
   };
 
   return (
-    <Box className="settings-container">
-      {/* Professional Header */}
-      <Box className="settings-header">
-        <Box className="header-content">
-          <Box>
-            <Typography className="header-title">
-              Widget Settings
-            </Typography>
-            <Typography className="header-subtitle">
-              Configure your yoga widget
-            </Typography>
-          </Box>
-          <Box className="header-actions">
+    <Box className="modern-settings-container">
+      {/* Two Column Layout without header */}
+      <Box className="modern-layout no-header">
+        {/* Sidebar Navigation */}
+        <Box className="sidebar">
+          <nav className="sidebar-nav" role="navigation" aria-label="Settings navigation">
+            {sections.map((section) => (
+              <button
+                key={section.id}
+                className={`sidebar-item ${activeSection === section.id ? 'active' : ''}`}
+                onClick={() => setActiveSection(section.id)}
+                aria-current={activeSection === section.id ? 'page' : undefined}
+                tabIndex={0}
+              >
+                <span className="sidebar-icon" aria-hidden="true">{section.icon}</span>
+                <span className="sidebar-label">{section.label}</span>
+              </button>
+            ))}
+          </nav>
+
+          {/* Action buttons at bottom of sidebar */}
+          <Box className="sidebar-actions">
             <Button
-              className="action-button secondary-button"
-              startIcon={<RefreshIcon />}
-              onClick={resetSettings}
-              size="small"
+              variant="outlined"
+              fullWidth
+              startIcon={<DashboardIcon />}
+              onClick={() => window.open('http://localhost:3000', '_blank')}
+              className="dashboard-button"
+              size="medium"
             >
-              Reset
+              Dashboard
             </Button>
             <Button
-              className="action-button primary-button"
+              variant="outlined"
+              fullWidth
+              startIcon={<RefreshIcon />}
+              onClick={resetSettings}
+              className="reset-button"
+              size="medium"
+            >
+              Reset All
+            </Button>
+            <Button
+              variant="contained"
+              fullWidth
               startIcon={isSaving ? <span className="loading-spinner" /> : <SaveIcon />}
               onClick={saveSettings}
               disabled={isSaving}
-              size="small"
+              className="save-button"
+              size="large"
             >
-              {isSaving ? 'Saving' : 'Save'}
+              {isSaving ? 'Saving...' : 'Save Changes'}
             </Button>
           </Box>
         </Box>
-      </Box>
 
-      {/* Navigation Tabs */}
-      <Box className="nav-tabs">
-        {sections.map((section) => (
-          <button
-            key={section.id}
-            className={`nav-tab ${activeSection === section.id ? 'active' : ''}`}
-            onClick={() => setActiveSection(section.id)}
-          >
-            <span className="nav-icon">{section.icon}</span>
-            {section.label}
-          </button>
-        ))}
-      </Box>
-
-      {/* Scrollable Content Area */}
-      <Box className="settings-content">
+        {/* Main Content Area */}
+        <Box className="main-content">
+          <Box className="content-wrapper">
         {/* Content Sections */}
       {activeSection === 'appearance' && (
         <Box className="settings-section">
@@ -470,10 +480,6 @@ function AppContent() {
               </Box>
             )}
 
-            {/* Widget Control Toggles */}
-            <Typography variant="subtitle2" sx={{ mt: 2, mb: 1, fontWeight: 600 }}>
-              Widget Controls
-            </Typography>
 
             <Box className="toggle-container">
               <Box className="toggle-label">
@@ -874,13 +880,15 @@ function AppContent() {
         </Box>
       )}
 
-      </Box> {/* End of scrollable content */}
+          </Box> {/* End of content-wrapper */}
+        </Box> {/* End of main-content */}
+      </Box> {/* End of modern-layout */}
 
       {/* Success Message Overlay */}
       {showSuccessMessage && (
         <Box className="success-overlay">
           <CheckIcon className="success-icon" />
-          <Typography className="success-text">Settings saved</Typography>
+          <Typography className="success-text">Settings saved successfully</Typography>
         </Box>
       )}
     </Box>
