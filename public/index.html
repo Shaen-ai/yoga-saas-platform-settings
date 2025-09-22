@@ -8,9 +8,32 @@
   <meta name="theme-color" content="#4B5563" />
   <meta name="description" content="Yoga Platform Settings" />
   <title>Settings - Yoga Platform</title>
-  <!-- Wix SDK Scripts -->
-  <script src="//static.parastorage.com/services/js-sdk/1.469.0/js/wix.min.js"></script>
-  <script src="//static.parastorage.com/services/editor-platform-host-integration/1.2373.0/index.js"></script>
+  <!-- Wix SDK Scripts - Only load when in Wix environment -->
+  <script>
+    // Check if we're in a Wix environment before loading SDK scripts
+    (function() {
+      var isInWix = window.parent !== window || window.location.href.includes('wix.com');
+
+      if (isInWix) {
+        // Load Wix SDK scripts dynamically only when in Wix
+        var wixScript = document.createElement('script');
+        wixScript.src = '//static.parastorage.com/services/js-sdk/1.469.0/js/wix.min.js';
+        wixScript.onerror = function() {
+          console.log('Wix SDK script not available - running in standalone mode');
+        };
+        document.head.appendChild(wixScript);
+
+        var editorScript = document.createElement('script');
+        editorScript.src = '//static.parastorage.com/services/editor-platform-host-integration/1.2373.0/index.js';
+        editorScript.onerror = function() {
+          console.log('Wix Editor integration script not available - running in standalone mode');
+        };
+        document.head.appendChild(editorScript);
+      } else {
+        console.log('Not in Wix environment - SDK scripts not loaded');
+      }
+    })();
+  </script>
   <script>
     // Initialize Wix SDK when ready
     window.addEventListener('DOMContentLoaded', function() {

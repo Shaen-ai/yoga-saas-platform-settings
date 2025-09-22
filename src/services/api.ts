@@ -7,26 +7,30 @@ const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000/api';
 const getWixHeaders = (): Record<string, string> => {
   const headers: Record<string, string> = {};
 
-  const compId = sessionStorage.getItem('wixCompId');
-  const instance = sessionStorage.getItem('wixInstance');
+  const compId = sessionStorage.getItem('wixCompId') || localStorage.getItem('wixCompId');
+  const instance = sessionStorage.getItem('wixInstance') || localStorage.getItem('wixInstance');
 
   if (compId) headers['X-Wix-Comp-Id'] = compId;
   if (instance) headers['X-Wix-Instance'] = instance;
 
-  // Extract tenant ID from instance if available
-  if (instance) {
-    try {
-      const [encodedData] = instance.split('.');
-      const decodedData = atob(encodedData);
-      const instanceData = JSON.parse(decodedData);
-      const tenantId = instanceData.instanceId || instanceData.siteOwnerId || instanceData.uid;
-      if (tenantId) headers['X-Tenant-ID'] = tenantId;
-    } catch (error) {
-      console.error('Failed to extract tenant ID:', error);
-    }
-  }
+  // Generate tenant ID from compId and instance
+  const tenantId = `${compId || 'default'}_${instance || 'default'}`;
+  headers['X-Tenant-Id'] = tenantId;
 
   return headers;
+};
+
+// Helper function to get Wix query parameters
+const getWixParams = (): Record<string, string> => {
+  const params: Record<string, string> = {};
+
+  const compId = sessionStorage.getItem('wixCompId') || localStorage.getItem('wixCompId');
+  const instance = sessionStorage.getItem('wixInstance') || localStorage.getItem('wixInstance');
+
+  if (compId) params.compId = compId;
+  if (instance) params.instance = instance;
+
+  return params;
 };
 
 // Create axios instance with default config
@@ -45,11 +49,31 @@ apiClient.interceptors.request.use(
     const wixHeaders = getWixHeaders();
     Object.assign(config.headers, wixHeaders);
 
+    // Also add Wix params to query string for GET requests (backup)
+    if (config.method === 'get') {
+      const wixParams = getWixParams();
+      config.params = {
+        ...config.params,
+        ...wixParams
+      };
+    }
+
     // Add auth token if available
     const token = localStorage.getItem('authToken');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
+
+    // Log the request for debugging in development
+    if (process.env.NODE_ENV === 'development') {
+      console.log('API Request:', {
+        url: config.url,
+        method: config.method,
+        headers: config.headers,
+        params: config.params
+      });
+    }
+
     return config;
   },
   (error) => {

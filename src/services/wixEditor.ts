@@ -1,49 +1,53 @@
 /**
  * Wix Editor SDK Integration
  * Handles communication with Wix Editor for settings panel
+ * Using legacy Wix SDK methods since @wix/editor is not available
  */
 
-import { editor, widget } from '@wix/editor';
-import { createClient } from '@wix/sdk';
-
-let wixClient: any = null;
 let isInitialized = false;
 
 /**
- * Initialize Wix Editor client
+ * Initialize Wix Editor integration
  */
 export const initializeWixEditor = () => {
   if (isInitialized) {
-    return wixClient;
+    return true;
   }
 
   try {
-    wixClient = createClient({
-      host: editor.host(),
-      modules: { widget },
-    });
+    // Check if legacy Wix SDK is available
+    if ((window as any).Wix) {
+      isInitialized = true;
+      console.log('Wix legacy SDK available for editor integration');
+      return true;
+    }
 
-    isInitialized = true;
-    console.log('Wix Editor client initialized');
-    return wixClient;
+    console.log('Wix SDK not available, running in standalone mode');
+    return false;
   } catch (error) {
-    console.error('Failed to initialize Wix Editor client:', error);
-    return null;
+    console.error('Failed to initialize Wix Editor integration:', error);
+    return false;
   }
 };
 
 /**
- * Get widget properties from Wix Editor
+ * Get widget properties from Wix Editor (using legacy SDK)
  */
 export const getWidgetProps = async () => {
   try {
-    const client = initializeWixEditor();
-    if (!client) return null;
+    if (!initializeWixEditor()) return null;
 
-    // Get all widget properties
-    const props = await client.widget.getProps();
-    console.log('Widget properties:', props);
-    return props;
+    const wix = (window as any).Wix;
+    if (wix?.Settings?.getStyleParams) {
+      return new Promise((resolve) => {
+        wix.Settings.getStyleParams((styleParams: any) => {
+          console.log('Widget style properties:', styleParams);
+          resolve(styleParams);
+        });
+      });
+    }
+
+    return null;
   } catch (error) {
     console.error('Failed to get widget properties:', error);
     return null;
@@ -51,16 +55,33 @@ export const getWidgetProps = async () => {
 };
 
 /**
- * Set a widget property
+ * Set a widget property (using legacy SDK or postMessage)
  */
 export const setWidgetProp = async (propName: string, value: any) => {
   try {
-    const client = initializeWixEditor();
-    if (!client) return false;
+    if (!initializeWixEditor()) {
+      // If not in Wix, try postMessage to parent
+      if (window.parent !== window) {
+        window.parent.postMessage({
+          type: 'yoga-widget-update',
+          propName,
+          value
+        }, '*');
+        console.log(`Sent widget property ${propName} via postMessage:`, value);
+        return true;
+      }
+      return false;
+    }
 
-    await client.widget.setProp(propName, value);
-    console.log(`Set widget property ${propName} to:`, value);
-    return true;
+    // Use legacy Wix SDK to trigger refresh
+    const wix = (window as any).Wix;
+    if (wix?.Settings?.triggerSettingsUpdatedEvent) {
+      wix.Settings.triggerSettingsUpdatedEvent({ [propName]: value });
+      console.log(`Set widget property ${propName} to:`, value);
+      return true;
+    }
+
+    return false;
   } catch (error) {
     console.error(`Failed to set widget property ${propName}:`, error);
     return false;
@@ -72,16 +93,28 @@ export const setWidgetProp = async (propName: string, value: any) => {
  */
 export const setWidgetProps = async (props: Record<string, any>) => {
   try {
-    const client = initializeWixEditor();
-    if (!client) return false;
-
-    // Set each property
-    for (const [key, value] of Object.entries(props)) {
-      await client.widget.setProp(key, value);
+    if (!initializeWixEditor()) {
+      // If not in Wix, try postMessage to parent
+      if (window.parent !== window) {
+        window.parent.postMessage({
+          type: 'yoga-widget-update',
+          settings: props
+        }, '*');
+        console.log('Sent widget properties via postMessage:', props);
+        return true;
+      }
+      return false;
     }
 
-    console.log('Set widget properties:', props);
-    return true;
+    // Use legacy Wix SDK
+    const wix = (window as any).Wix;
+    if (wix?.Settings?.triggerSettingsUpdatedEvent) {
+      wix.Settings.triggerSettingsUpdatedEvent(props);
+      console.log('Set widget properties:', props);
+      return true;
+    }
+
+    return false;
   } catch (error) {
     console.error('Failed to set widget properties:', error);
     return false;
