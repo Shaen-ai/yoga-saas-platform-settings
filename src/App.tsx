@@ -209,7 +209,7 @@ function AppContent() {
               variant="outlined"
               fullWidth
               startIcon={<DashboardIcon />}
-              onClick={() => window.open('http://localhost:3000', '_blank')}
+              onClick={() => window.open(process.env.REACT_APP_DASHBOARD_URL || 'http://localhost:3002', '_blank')}
               className="dashboard-button"
               size="medium"
             >
