@@ -48,58 +48,125 @@ export const WixProvider: React.FC<WixProviderProps> = ({ children }) => {
   useEffect(() => {
     const initWix = async () => {
       try {
-        // Check if we're in a Wix environment
+        // Check if we're in a Wix environment first
         const isInWix = window.parent !== window || !!(window as WixWindow).Wix;
         setIsWixEnvironment(isInWix);
 
-        if (isInWix) {
-          // Initialize Wix Dashboard SDK if available
-          if ((window as WixWindow).Wix?.Dashboard) {
-            try {
-              const sdk = dashboard.host();
-              setDashboardSDK(sdk);
+        // Get parameters from URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const appDefinitionId = urlParams.get('appDefinitionId');
+        const applicationId = urlParams.get('applicationId');
+        let urlCompId = urlParams.get('compId') || urlParams.get('comp_id');
+        let urlInstance = urlParams.get('instance');
 
-              // Try to get component ID using Wix methods
-              const wixObj = (window as WixWindow).Wix;
-              if (wixObj?.getComponentId) {
-                const componentId = wixObj.getComponentId();
-                if (componentId) {
-                  setCompId(componentId);
-                  sessionStorage.setItem('wixCompId', componentId);
-                }
-              }
+        // For Settings Panel in Wix Editor - use Wix SDK to get instance
+        if (isInWix && (window as any).Wix) {
+          try {
+            // Settings panel specific methods
+            const wix = (window as any).Wix;
 
-              // Try to get instance using Wix methods
-              if (wixObj?.getInstanceId) {
-                const instanceId = wixObj.getInstanceId();
-                if (instanceId) {
-                  setInstance(instanceId);
-                  sessionStorage.setItem('wixInstance', instanceId);
-                }
+            // Get instance ID for settings panel
+            if (wix.Settings && wix.Settings.getInstanceId) {
+              const instanceId = wix.Settings.getInstanceId();
+              if (instanceId) {
+                urlInstance = instanceId;
+                console.log('Got instance from Wix Settings SDK:', instanceId);
               }
-            } catch (sdkError) {
-              console.log('Could not initialize Dashboard SDK:', sdkError);
             }
+
+            // Try to get site instance
+            if (!urlInstance && wix.getInstanceId) {
+              const instanceId = wix.getInstanceId();
+              if (instanceId) {
+                urlInstance = instanceId;
+                console.log('Got instance from Wix getInstanceId:', instanceId);
+              }
+            }
+
+            // Get component info
+            if (!urlCompId && wix.getComponentInfo) {
+              const compInfo = wix.getComponentInfo();
+              if (compInfo && compInfo.compId) {
+                urlCompId = compInfo.compId;
+                console.log('Got compId from component info:', compInfo.compId);
+              }
+            }
+
+            // Get site info for additional context
+            if (wix.getSiteInfo) {
+              const siteInfo = wix.getSiteInfo();
+              console.log('Site info:', siteInfo);
+              if (siteInfo && siteInfo.siteId && !urlInstance) {
+                // Use siteId as part of instance if no instance found
+                urlInstance = `site_${siteInfo.siteId}`;
+              }
+            }
+          } catch (e) {
+            console.log('Error getting Wix SDK data:', e);
           }
+        }
 
-          // Alternative: Try to get from URL params
-          const urlParams = new URLSearchParams(window.location.search);
-          const urlCompId = urlParams.get('compId') || urlParams.get('comp_id');
-          const urlInstance = urlParams.get('instance');
+        // Use appDefinitionId as fallback for compId if not found
+        if (!urlCompId && appDefinitionId) {
+          urlCompId = appDefinitionId;
+          console.log('Using appDefinitionId as compId:', appDefinitionId);
+        }
 
-          if (!compId && urlCompId) {
-            setCompId(urlCompId);
-            sessionStorage.setItem('wixCompId', urlCompId);
-            console.log('Stored compId from URL:', urlCompId);
+        // Store parameters if found
+        if (urlCompId) {
+          setCompId(urlCompId);
+          sessionStorage.setItem('wixCompId', urlCompId);
+          console.log('Stored compId:', urlCompId);
+        }
+
+        if (urlInstance) {
+          setInstance(urlInstance);
+          sessionStorage.setItem('wixInstance', urlInstance);
+          console.log('Stored instance:', urlInstance);
+        }
+
+        // If still no instance but we have appDefinitionId, generate a tenant key
+        if (!urlInstance && appDefinitionId) {
+          // Use a combination of appDefinitionId and applicationId as tenant identifier
+          const tenantKey = `${appDefinitionId}_${applicationId || 'default'}`;
+          setInstance(tenantKey);
+          sessionStorage.setItem('wixInstance', tenantKey);
+          console.log('Generated tenant key:', tenantKey);
+        }
+
+        if (isInWix && (window as WixWindow).Wix?.Dashboard) {
+          // Try to initialize Wix Dashboard SDK
+          try {
+            const sdk = dashboard.host();
+            setDashboardSDK(sdk);
+
+            // Try to get component ID using Wix methods (as fallback if not in URL)
+            const wixObj = (window as WixWindow).Wix;
+            if (!urlCompId && wixObj?.getComponentId) {
+              const componentId = wixObj.getComponentId();
+              if (componentId) {
+                setCompId(componentId);
+                sessionStorage.setItem('wixCompId', componentId);
+                console.log('Got compId from Wix SDK:', componentId);
+              }
+            }
+
+            // Try to get instance using Wix methods (as fallback if not in URL)
+            if (!urlInstance && wixObj?.getInstanceId) {
+              const instanceId = wixObj.getInstanceId();
+              if (instanceId) {
+                setInstance(instanceId);
+                sessionStorage.setItem('wixInstance', instanceId);
+                console.log('Got instance from Wix SDK:', instanceId);
+              }
+            }
+          } catch (sdkError) {
+            console.log('Could not initialize Dashboard SDK:', sdkError);
           }
+        }
 
-          if (!instance && urlInstance) {
-            setInstance(urlInstance);
-            sessionStorage.setItem('wixInstance', urlInstance);
-            console.log('Stored instance from URL:', urlInstance);
-          }
-
-          // Initialize Wix Client with OAuth strategy
+        // Initialize Wix Client with OAuth strategy (only in Wix environment)
+        if (isInWix) {
           try {
             const client = createClient({
               auth: OAuthStrategy({
@@ -119,27 +186,6 @@ export const WixProvider: React.FC<WixProviderProps> = ({ children }) => {
             setWixClient(client);
           } catch (error) {
             console.log('Could not initialize Wix client, running in iframe mode');
-          }
-        } else {
-          // Not in Wix, but still check URL parameters
-          const urlParams = new URLSearchParams(window.location.search);
-          const urlCompId = urlParams.get('compId') || urlParams.get('comp_id');
-          const urlInstance = urlParams.get('instance');
-
-          // Check for stored values first
-          const storedCompId = sessionStorage.getItem('wixCompId');
-          const storedInstance = sessionStorage.getItem('wixInstance');
-
-          const finalCompId = storedCompId || urlCompId;
-          const finalInstance = storedInstance || urlInstance;
-
-          if (finalCompId) {
-            setCompId(finalCompId);
-            sessionStorage.setItem('wixCompId', finalCompId);
-          }
-          if (finalInstance) {
-            setInstance(finalInstance);
-            sessionStorage.setItem('wixInstance', finalInstance);
           }
         }
       } catch (error) {

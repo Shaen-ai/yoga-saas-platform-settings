@@ -11,6 +11,61 @@
   <!-- Wix SDK Scripts -->
   <script src="//static.parastorage.com/services/js-sdk/1.469.0/js/wix.min.js"></script>
   <script src="//static.parastorage.com/services/editor-platform-host-integration/1.2373.0/index.js"></script>
+  <script>
+    // Initialize Wix SDK when ready
+    window.addEventListener('DOMContentLoaded', function() {
+      if (window.Wix) {
+        try {
+          console.log('Wix SDK available, initializing...');
+
+          // For Settings Panel - get instance ID
+          if (window.Wix.Settings && window.Wix.Settings.getInstanceId) {
+            const instanceId = window.Wix.Settings.getInstanceId();
+            if (instanceId) {
+              sessionStorage.setItem('wixInstance', instanceId);
+              console.log('Stored instance from Wix Settings:', instanceId);
+            }
+          }
+
+          // Get site info
+          if (window.Wix.getSiteInfo) {
+            const siteInfo = window.Wix.getSiteInfo();
+            console.log('Wix site info:', siteInfo);
+
+            if (siteInfo) {
+              if (siteInfo.siteId) {
+                sessionStorage.setItem('wixSiteId', siteInfo.siteId);
+              }
+              // Store instance from site info if available
+              if (siteInfo.instanceId) {
+                sessionStorage.setItem('wixInstance', siteInfo.instanceId);
+              }
+            }
+          }
+
+          // Get component info
+          if (window.Wix.getComponentInfo) {
+            const compInfo = window.Wix.getComponentInfo();
+            if (compInfo && compInfo.compId) {
+              sessionStorage.setItem('wixCompId', compInfo.compId);
+              console.log('Stored compId from component info:', compInfo.compId);
+            }
+          }
+
+          // Listen for settings updates
+          if (window.Wix.addEventListener && window.Wix.Events) {
+            window.Wix.addEventListener(window.Wix.Events.SETTINGS_UPDATED, function(data) {
+              console.log('Wix settings updated:', data);
+              // Trigger React re-render if needed
+              window.dispatchEvent(new CustomEvent('wixSettingsUpdated', { detail: data }));
+            });
+          }
+        } catch (e) {
+          console.log('Error initializing Wix SDK:', e);
+        }
+      }
+    });
+  </script>
 </head>
 <body>
   <noscript>You need to enable JavaScript to run this app.</noscript>

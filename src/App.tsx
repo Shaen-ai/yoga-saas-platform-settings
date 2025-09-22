@@ -43,6 +43,7 @@ import { ChromePicker } from 'react-color';
 import { ToastProvider, useToast } from './hooks/useToast';
 import { settingsAPI } from './services/api';
 import { storeWixParams, buildDashboardUrl, isWixEnvironment } from './utils/wixUtils';
+import { setWidgetProps, getWidgetProps, onSettingsUpdate, getEditorContext } from './services/wixEditor';
 import './App.css';
 
 // Professional Color Palette
@@ -133,6 +134,27 @@ function AppContent() {
     // Store Wix params if present
     storeWixParams();
     loadSettings();
+
+    // Get editor context for instance ID
+    getEditorContext().then(context => {
+      if (context) {
+        console.log('Editor context loaded:', context);
+      }
+    });
+
+    // Load widget properties if available
+    getWidgetProps().then(props => {
+      if (props) {
+        console.log('Widget properties loaded:', props);
+        // You can map widget props to settings here if needed
+      }
+    });
+
+    // Listen for settings updates from Wix
+    onSettingsUpdate((data) => {
+      console.log('Settings updated from Wix:', data);
+      loadSettings();
+    });
   }, []);
 
   const loadSettings = async () => {
@@ -153,7 +175,29 @@ function AppContent() {
   const saveSettings = async () => {
     setIsSaving(true);
     try {
+      // Save to backend API
       await settingsAPI.saveUIPreferences(settings);
+
+      // Also update widget properties if in Wix Editor
+      if (isWixEnvironment()) {
+        const widgetProps = {
+          primaryColor: settings.appearance.primaryColor,
+          theme: settings.appearance.theme || 'light',
+          fontSize: settings.appearance.fontSize,
+          borderRadius: settings.appearance.borderRadius,
+          defaultView: settings.layout.defaultView,
+          calendarView: settings.layout.calendarView,
+          showHeader: settings.layout.showHeader,
+          headerTitle: settings.layout.headerTitle,
+          compactMode: settings.layout.compactMode,
+          language: settings.behavior.language,
+          animations: settings.behavior.animationsEnabled,
+        };
+
+        await setWidgetProps(widgetProps);
+        console.log('Widget properties updated');
+      }
+
       setShowSuccessMessage(true);
       showSuccess('Settings saved successfully');
       setTimeout(() => setShowSuccessMessage(false), 3000);

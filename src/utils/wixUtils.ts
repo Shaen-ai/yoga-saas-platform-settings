@@ -64,8 +64,14 @@ export const buildDashboardUrl = (baseUrl?: string): string => {
   // Fallback to URL params
   const urlParams = getWixParams();
 
-  const compId = storedCompId || urlParams.compId;
-  const instance = storedInstance || urlParams.instance;
+  // Also check current window location
+  const currentUrl = new URL(window.location.href);
+  const currentCompId = currentUrl.searchParams.get('compId') || currentUrl.searchParams.get('comp_id');
+  const currentInstance = currentUrl.searchParams.get('instance');
+
+  // Use first available source
+  const compId = storedCompId || urlParams.compId || currentCompId;
+  const instance = storedInstance || urlParams.instance || currentInstance;
 
   // Log for debugging
   console.log('Building dashboard URL:', {
@@ -73,22 +79,33 @@ export const buildDashboardUrl = (baseUrl?: string): string => {
     storedCompId,
     storedInstance,
     urlParams,
-    compId,
-    instance
+    currentCompId,
+    currentInstance,
+    finalCompId: compId,
+    finalInstance: instance,
+    currentHref: window.location.href
   });
 
   if (!compId && !instance) {
-    console.warn('No Wix parameters found for dashboard URL');
-    // In production, still try to get from current URL
-    const currentUrl = new URL(window.location.href);
-    const currentCompId = currentUrl.searchParams.get('compId') || currentUrl.searchParams.get('comp_id');
-    const currentInstance = currentUrl.searchParams.get('instance');
+    console.warn('No Wix parameters found anywhere for dashboard URL');
 
-    if (currentCompId || currentInstance) {
-      const url = new URL(dashboardUrl);
-      if (currentCompId) url.searchParams.set('compId', currentCompId);
-      if (currentInstance) url.searchParams.set('instance', currentInstance);
-      return url.toString();
+    // Check if we're in an iframe and try to get params from parent
+    if (window.parent !== window) {
+      try {
+        const parentUrl = new URL(document.referrer || window.parent.location.href);
+        const parentCompId = parentUrl.searchParams.get('compId') || parentUrl.searchParams.get('comp_id');
+        const parentInstance = parentUrl.searchParams.get('instance');
+
+        if (parentCompId || parentInstance) {
+          console.log('Found params in parent frame:', { parentCompId, parentInstance });
+          const url = new URL(dashboardUrl);
+          if (parentCompId) url.searchParams.set('compId', parentCompId);
+          if (parentInstance) url.searchParams.set('instance', parentInstance);
+          return url.toString();
+        }
+      } catch (e) {
+        console.log('Could not access parent frame URL:', e);
+      }
     }
 
     // No Wix params at all, return base URL
