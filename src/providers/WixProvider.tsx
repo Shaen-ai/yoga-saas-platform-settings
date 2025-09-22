@@ -90,11 +90,13 @@ export const WixProvider: React.FC<WixProviderProps> = ({ children }) => {
           if (!compId && urlCompId) {
             setCompId(urlCompId);
             sessionStorage.setItem('wixCompId', urlCompId);
+            console.log('Stored compId from URL:', urlCompId);
           }
 
           if (!instance && urlInstance) {
             setInstance(urlInstance);
             sessionStorage.setItem('wixInstance', urlInstance);
+            console.log('Stored instance from URL:', urlInstance);
           }
 
           // Initialize Wix Client with OAuth strategy
@@ -119,12 +121,26 @@ export const WixProvider: React.FC<WixProviderProps> = ({ children }) => {
             console.log('Could not initialize Wix client, running in iframe mode');
           }
         } else {
-          // Not in Wix, check for stored values (for development)
+          // Not in Wix, but still check URL parameters
+          const urlParams = new URLSearchParams(window.location.search);
+          const urlCompId = urlParams.get('compId') || urlParams.get('comp_id');
+          const urlInstance = urlParams.get('instance');
+
+          // Check for stored values first
           const storedCompId = sessionStorage.getItem('wixCompId');
           const storedInstance = sessionStorage.getItem('wixInstance');
 
-          if (storedCompId) setCompId(storedCompId);
-          if (storedInstance) setInstance(storedInstance);
+          const finalCompId = storedCompId || urlCompId;
+          const finalInstance = storedInstance || urlInstance;
+
+          if (finalCompId) {
+            setCompId(finalCompId);
+            sessionStorage.setItem('wixCompId', finalCompId);
+          }
+          if (finalInstance) {
+            setInstance(finalInstance);
+            sessionStorage.setItem('wixInstance', finalInstance);
+          }
         }
       } catch (error) {
         console.error('Error initializing Wix:', error);

@@ -67,8 +67,31 @@ export const buildDashboardUrl = (baseUrl?: string): string => {
   const compId = storedCompId || urlParams.compId;
   const instance = storedInstance || urlParams.instance;
 
+  // Log for debugging
+  console.log('Building dashboard URL:', {
+    dashboardUrl,
+    storedCompId,
+    storedInstance,
+    urlParams,
+    compId,
+    instance
+  });
+
   if (!compId && !instance) {
-    // No Wix params, return base URL
+    console.warn('No Wix parameters found for dashboard URL');
+    // In production, still try to get from current URL
+    const currentUrl = new URL(window.location.href);
+    const currentCompId = currentUrl.searchParams.get('compId') || currentUrl.searchParams.get('comp_id');
+    const currentInstance = currentUrl.searchParams.get('instance');
+
+    if (currentCompId || currentInstance) {
+      const url = new URL(dashboardUrl);
+      if (currentCompId) url.searchParams.set('compId', currentCompId);
+      if (currentInstance) url.searchParams.set('instance', currentInstance);
+      return url.toString();
+    }
+
+    // No Wix params at all, return base URL
     return dashboardUrl;
   }
 

@@ -212,7 +212,11 @@ function AppContent() {
               variant="outlined"
               fullWidth
               startIcon={<DashboardIcon />}
-              onClick={() => window.open(buildDashboardUrl(), '_blank')}
+              onClick={() => {
+                const dashboardUrl = buildDashboardUrl();
+                console.log('Opening dashboard with URL:', dashboardUrl);
+                window.open(dashboardUrl, '_blank');
+              }}
               className="dashboard-button"
               size="medium"
             >
