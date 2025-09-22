@@ -3,6 +3,19 @@ import { createClient, OAuthStrategy } from '@wix/sdk';
 import { dashboard } from '@wix/dashboard';
 import { site } from '@wix/site';
 
+// Import WixWindow type
+interface WixWindow extends Window {
+  Wix?: {
+    Dashboard?: any;
+    getSiteInfo?: () => any;
+    getInstanceId?: () => string;
+    getComponentId?: () => string;
+    openModal?: (url: string, width: number, height: number) => void;
+    navigateToComponent?: (compId: string, params?: any) => void;
+  };
+  wixDevelopersAnalytics?: any;
+}
+
 interface WixContextType {
   wixClient: any;
   instance: string | null;
@@ -36,27 +49,36 @@ export const WixProvider: React.FC<WixProviderProps> = ({ children }) => {
     const initWix = async () => {
       try {
         // Check if we're in a Wix environment
-        const isInWix = window.parent !== window || !!window.Wix;
+        const isInWix = window.parent !== window || !!(window as WixWindow).Wix;
         setIsWixEnvironment(isInWix);
 
         if (isInWix) {
           // Initialize Wix Dashboard SDK if available
-          if (window.Wix?.Dashboard) {
-            const sdk = await dashboard.getHost();
-            setDashboardSDK(sdk);
+          if ((window as WixWindow).Wix?.Dashboard) {
+            try {
+              const sdk = dashboard.host();
+              setDashboardSDK(sdk);
 
-            // Get component ID
-            const componentId = await sdk.dashboard.getComponentId?.();
-            if (componentId) {
-              setCompId(componentId);
-              sessionStorage.setItem('wixCompId', componentId);
-            }
+              // Try to get component ID using Wix methods
+              const wixObj = (window as WixWindow).Wix;
+              if (wixObj?.getComponentId) {
+                const componentId = wixObj.getComponentId();
+                if (componentId) {
+                  setCompId(componentId);
+                  sessionStorage.setItem('wixCompId', componentId);
+                }
+              }
 
-            // Get instance
-            const instanceId = await sdk.dashboard.getInstanceId?.();
-            if (instanceId) {
-              setInstance(instanceId);
-              sessionStorage.setItem('wixInstance', instanceId);
+              // Try to get instance using Wix methods
+              if (wixObj?.getInstanceId) {
+                const instanceId = wixObj.getInstanceId();
+                if (instanceId) {
+                  setInstance(instanceId);
+                  sessionStorage.setItem('wixInstance', instanceId);
+                }
+              }
+            } catch (sdkError) {
+              console.log('Could not initialize Dashboard SDK:', sdkError);
             }
           }
 
