@@ -1,7 +1,26 @@
 import axios, { AxiosInstance, AxiosError } from 'axios';
+import { createClient } from '@wix/sdk';
+import { site } from '@wix/site';
 
 // API Configuration
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000/api';
+
+// Initialize Wix client with site.auth() for automatic token management
+let wixClient: any = null;
+
+const getWixClient = () => {
+  if (!wixClient) {
+    try {
+      wixClient = createClient({
+        auth: site.auth(),
+        modules: { site }
+      });
+    } catch (error) {
+      console.log('Could not initialize Wix client, using fallback');
+    }
+  }
+  return wixClient;
+};
 
 // Helper function to get Wix headers
 const getWixHeaders = (): Record<string, string> => {
@@ -94,36 +113,71 @@ apiClient.interceptors.response.use(
   }
 );
 
+// Use Wix fetchWithAuth if available, otherwise fall back to axios
+const makeAuthenticatedRequest = async (url: string, options: any = {}) => {
+  const client = getWixClient();
+
+  // Try to use Wix fetchWithAuth first
+  if (client && client.fetchWithAuth) {
+    try {
+      const fullUrl = `${API_URL}${url}`;
+      const response = await client.fetchWithAuth(fullUrl, {
+        method: options.method || 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          ...getWixHeaders(),
+          ...options.headers
+        },
+        body: options.data ? JSON.stringify(options.data) : undefined
+      });
+      return await response.json();
+    } catch (error) {
+      console.log('fetchWithAuth failed, falling back to axios:', error);
+    }
+  }
+
+  // Fallback to axios
+  const axiosConfig = {
+    url,
+    ...options
+  };
+  const response = await apiClient.request(axiosConfig);
+  return response.data;
+};
+
 // Settings API
 export const settingsAPI = {
   // Get UI preferences
   getUIPreferences: async () => {
-    const response = await apiClient.get('/settings/ui-preferences');
-    return response.data;
+    return await makeAuthenticatedRequest('/settings/ui-preferences');
   },
 
   // Save UI preferences
   saveUIPreferences: async (preferences: any) => {
-    const response = await apiClient.post('/settings/ui-preferences', preferences);
-    return response.data;
+    return await makeAuthenticatedRequest('/settings/ui-preferences', {
+      method: 'POST',
+      data: preferences
+    });
   },
 
   // Get all settings
   getAllSettings: async () => {
-    const response = await apiClient.get('/settings');
-    return response.data;
+    return await makeAuthenticatedRequest('/settings');
   },
 
   // Update specific setting
   updateSetting: async (key: string, value: any) => {
-    const response = await apiClient.patch('/settings', { [key]: value });
-    return response.data;
+    return await makeAuthenticatedRequest('/settings', {
+      method: 'PATCH',
+      data: { [key]: value }
+    });
   },
 
   // Reset settings to defaults
   resetSettings: async () => {
-    const response = await apiClient.post('/settings/reset');
-    return response.data;
+    return await makeAuthenticatedRequest('/settings/reset', {
+      method: 'POST'
+    });
   },
 };
 
@@ -131,14 +185,15 @@ export const settingsAPI = {
 export const usersAPI = {
   // Get current user
   getCurrentUser: async () => {
-    const response = await apiClient.get('/users/me');
-    return response.data;
+    return await makeAuthenticatedRequest('/users/me');
   },
 
   // Update user profile
   updateProfile: async (data: any) => {
-    const response = await apiClient.put('/users/profile', data);
-    return response.data;
+    return await makeAuthenticatedRequest('/users/profile', {
+      method: 'PUT',
+      data
+    });
   },
 };
 
@@ -146,14 +201,13 @@ export const usersAPI = {
 export const analyticsAPI = {
   // Get analytics data
   getAnalytics: async (params?: { startDate?: string; endDate?: string }) => {
-    const response = await apiClient.get('/analytics', { params });
-    return response.data;
+    const queryString = params ? '?' + new URLSearchParams(params).toString() : '';
+    return await makeAuthenticatedRequest(`/analytics${queryString}`);
   },
 
   // Get widget usage stats
   getWidgetUsage: async () => {
-    const response = await apiClient.get('/analytics/widget-usage');
-    return response.data;
+    return await makeAuthenticatedRequest('/analytics/widget-usage');
   },
 };
 
@@ -161,26 +215,31 @@ export const analyticsAPI = {
 export const eventsAPI = {
   // Get all events
   getEvents: async (params?: { type?: string; limit?: number }) => {
-    const response = await apiClient.get('/events', { params });
-    return response.data;
+    const queryString = params ? '?' + new URLSearchParams(params as any).toString() : '';
+    return await makeAuthenticatedRequest(`/events${queryString}`);
   },
 
   // Create new event
   createEvent: async (event: any) => {
-    const response = await apiClient.post('/events', event);
-    return response.data;
+    return await makeAuthenticatedRequest('/events', {
+      method: 'POST',
+      data: event
+    });
   },
 
   // Update event
   updateEvent: async (id: string, event: any) => {
-    const response = await apiClient.put(`/events/${id}`, event);
-    return response.data;
+    return await makeAuthenticatedRequest(`/events/${id}`, {
+      method: 'PUT',
+      data: event
+    });
   },
 
   // Delete event
   deleteEvent: async (id: string) => {
-    const response = await apiClient.delete(`/events/${id}`);
-    return response.data;
+    return await makeAuthenticatedRequest(`/events/${id}`, {
+      method: 'DELETE'
+    });
   },
 };
 
@@ -188,32 +247,35 @@ export const eventsAPI = {
 export const yogaPlansAPI = {
   // Get all yoga plans
   getPlans: async () => {
-    const response = await apiClient.get('/yoga-plans');
-    return response.data;
+    return await makeAuthenticatedRequest('/yoga-plans');
   },
 
   // Get single plan
   getPlan: async (id: string) => {
-    const response = await apiClient.get(`/yoga-plans/${id}`);
-    return response.data;
+    return await makeAuthenticatedRequest(`/yoga-plans/${id}`);
   },
 
   // Create new plan
   createPlan: async (plan: any) => {
-    const response = await apiClient.post('/yoga-plans', plan);
-    return response.data;
+    return await makeAuthenticatedRequest('/yoga-plans', {
+      method: 'POST',
+      data: plan
+    });
   },
 
   // Update plan
   updatePlan: async (id: string, plan: any) => {
-    const response = await apiClient.put(`/yoga-plans/${id}`, plan);
-    return response.data;
+    return await makeAuthenticatedRequest(`/yoga-plans/${id}`, {
+      method: 'PUT',
+      data: plan
+    });
   },
 
   // Delete plan
   deletePlan: async (id: string) => {
-    const response = await apiClient.delete(`/yoga-plans/${id}`);
-    return response.data;
+    return await makeAuthenticatedRequest(`/yoga-plans/${id}`, {
+      method: 'DELETE'
+    });
   },
 };
 
@@ -226,8 +288,10 @@ export const aiGenerationAPI = {
     duration?: number;
     frequency?: number;
   }) => {
-    const response = await apiClient.post('/ai-generation/plan', params);
-    return response.data;
+    return await makeAuthenticatedRequest('/ai-generation/plan', {
+      method: 'POST',
+      data: params
+    });
   },
 
   // Generate class description
@@ -236,8 +300,10 @@ export const aiGenerationAPI = {
     level?: string;
     duration?: number;
   }) => {
-    const response = await apiClient.post('/ai-generation/class-description', params);
-    return response.data;
+    return await makeAuthenticatedRequest('/ai-generation/class-description', {
+      method: 'POST',
+      data: params
+    });
   },
 };
 

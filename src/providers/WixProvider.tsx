@@ -165,27 +165,20 @@ export const WixProvider: React.FC<WixProviderProps> = ({ children }) => {
           }
         }
 
-        // Initialize Wix Client with OAuth strategy (only in Wix environment)
+        // Initialize Wix Client with site.auth() for automatic token injection
         if (isInWix) {
           try {
             const client = createClient({
-              auth: OAuthStrategy({
-                clientId: process.env.REACT_APP_WIX_CLIENT_ID || '',
-              }),
+              auth: site.auth(), // Use site.auth() for automatic token management
               modules: {
                 site,
               },
             });
 
-            // Try to get tokens from the instance
-            if (urlInstance) {
-              // The instance parameter contains authentication info
-              await client.auth.parseFromUrl();
-            }
-
             setWixClient(client);
+            console.log('Wix client initialized with site.auth()');
           } catch (error) {
-            console.log('Could not initialize Wix client, running in iframe mode');
+            console.log('Could not initialize Wix client, running in standalone mode');
           }
         }
       } catch (error) {
