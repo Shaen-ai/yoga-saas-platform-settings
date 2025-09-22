@@ -3,6 +3,32 @@ import axios, { AxiosInstance, AxiosError } from 'axios';
 // API Configuration
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000/api';
 
+// Helper function to get Wix headers
+const getWixHeaders = (): Record<string, string> => {
+  const headers: Record<string, string> = {};
+
+  const compId = sessionStorage.getItem('wixCompId');
+  const instance = sessionStorage.getItem('wixInstance');
+
+  if (compId) headers['X-Wix-Comp-Id'] = compId;
+  if (instance) headers['X-Wix-Instance'] = instance;
+
+  // Extract tenant ID from instance if available
+  if (instance) {
+    try {
+      const [encodedData] = instance.split('.');
+      const decodedData = atob(encodedData);
+      const instanceData = JSON.parse(decodedData);
+      const tenantId = instanceData.instanceId || instanceData.siteOwnerId || instanceData.uid;
+      if (tenantId) headers['X-Tenant-ID'] = tenantId;
+    } catch (error) {
+      console.error('Failed to extract tenant ID:', error);
+    }
+  }
+
+  return headers;
+};
+
 // Create axios instance with default config
 const apiClient: AxiosInstance = axios.create({
   baseURL: API_URL,
@@ -12,9 +38,13 @@ const apiClient: AxiosInstance = axios.create({
   },
 });
 
-// Request interceptor for auth token
+// Request interceptor for auth token and Wix headers
 apiClient.interceptors.request.use(
   (config) => {
+    // Add Wix headers
+    const wixHeaders = getWixHeaders();
+    Object.assign(config.headers, wixHeaders);
+
     // Add auth token if available
     const token = localStorage.getItem('authToken');
     if (token) {

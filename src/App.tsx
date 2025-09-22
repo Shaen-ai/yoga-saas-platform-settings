@@ -42,6 +42,7 @@ import {
 import { ChromePicker } from 'react-color';
 import { ToastProvider, useToast } from './hooks/useToast';
 import { settingsAPI } from './services/api';
+import { storeWixParams, buildDashboardUrl, isWixEnvironment } from './utils/wixUtils';
 import './App.css';
 
 // Professional Color Palette
@@ -129,6 +130,8 @@ function AppContent() {
   ];
 
   useEffect(() => {
+    // Store Wix params if present
+    storeWixParams();
     loadSettings();
   }, []);
 
@@ -209,7 +212,7 @@ function AppContent() {
               variant="outlined"
               fullWidth
               startIcon={<DashboardIcon />}
-              onClick={() => window.open(process.env.REACT_APP_DASHBOARD_URL || 'http://localhost:3002', '_blank')}
+              onClick={() => window.open(buildDashboardUrl(), '_blank')}
               className="dashboard-button"
               size="medium"
             >
