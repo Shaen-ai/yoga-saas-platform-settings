@@ -43,11 +43,11 @@ const getWixHeaders = (): Record<string, string> => {
 const getWixParams = (): Record<string, string> => {
   const params: Record<string, string> = {};
 
-  const compId = sessionStorage.getItem('wixCompId') || localStorage.getItem('wixCompId');
-  const instance = sessionStorage.getItem('wixInstance') || localStorage.getItem('wixInstance');
+  const compId = sessionStorage.getItem('wixCompId') || localStorage.getItem('wixCompId') || 'default';
+  const instance = sessionStorage.getItem('wixInstance') || localStorage.getItem('wixInstance') || 'default';
 
-  if (compId) params.compId = compId;
-  if (instance) params.instance = instance;
+  params.compId = compId;
+  params.instance = instance;
 
   return params;
 };
@@ -68,14 +68,12 @@ apiClient.interceptors.request.use(
     const wixHeaders = getWixHeaders();
     Object.assign(config.headers, wixHeaders);
 
-    // Also add Wix params to query string for GET requests (backup)
-    if (config.method === 'get') {
-      const wixParams = getWixParams();
-      config.params = {
-        ...config.params,
-        ...wixParams
-      };
-    }
+    // Add Wix params to query string for ALL requests
+    const wixParams = getWixParams();
+    config.params = {
+      ...config.params,
+      ...wixParams
+    };
 
     // Add auth token if available
     const token = localStorage.getItem('authToken');
@@ -116,12 +114,18 @@ apiClient.interceptors.response.use(
 // Use Wix fetchWithAuth if available, otherwise fall back to axios
 const makeAuthenticatedRequest = async (url: string, options: any = {}) => {
   const client = getWixClient();
+  const wixParams = getWixParams();
 
   // Try to use Wix fetchWithAuth first
   if (client && client.fetchWithAuth) {
     try {
-      const fullUrl = `${API_URL}${url}`;
-      const response = await client.fetchWithAuth(fullUrl, {
+      // Add query parameters to URL
+      const urlWithParams = new URL(`${API_URL}${url}`);
+      Object.entries(wixParams).forEach(([key, value]) => {
+        urlWithParams.searchParams.set(key, value);
+      });
+
+      const response = await client.fetchWithAuth(urlWithParams.toString(), {
         method: options.method || 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -136,10 +140,14 @@ const makeAuthenticatedRequest = async (url: string, options: any = {}) => {
     }
   }
 
-  // Fallback to axios
+  // Fallback to axios - add Wix params to all requests
   const axiosConfig = {
     url,
-    ...options
+    ...options,
+    params: {
+      ...wixParams,
+      ...options.params
+    }
   };
   const response = await apiClient.request(axiosConfig);
   return response.data;

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Box,
   Typography,
@@ -28,7 +28,6 @@ import {
   Palette as PaletteIcon,
   CalendarMonth as CalendarIcon,
   Save as SaveIcon,
-  Refresh as RefreshIcon,
   Settings as SettingsIcon,
   Language as LanguageIcon,
   Schedule as ScheduleIcon,
@@ -46,16 +45,6 @@ import { storeWixParams, buildDashboardUrl, isWixEnvironment } from './utils/wix
 import { setWidgetProps, getWidgetProps, onSettingsUpdate, getEditorContext } from './services/wixEditor';
 import './App.css';
 
-// Professional Color Palette
-const COLOR_PRESETS = [
-  { name: 'Professional Blue', value: '#2563eb' },
-  { name: 'Corporate Gray', value: '#475569' },
-  { name: 'Business Green', value: '#059669' },
-  { name: 'Executive Purple', value: '#7c3aed' },
-  { name: 'Classic Navy', value: '#1e40af' },
-  { name: 'Modern Teal', value: '#0891b2' }
-];
-
 // Calendar view options
 const CALENDAR_VIEWS = [
   { value: 'month', label: 'Month', icon: '📅', description: 'Monthly view' },
@@ -67,9 +56,9 @@ const CALENDAR_VIEWS = [
 function AppContent() {
   const { showSuccess, showError, showInfo } = useToast();
   const [activeSection, setActiveSection] = useState('appearance');
-  const [showColorPicker, setShowColorPicker] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [showSuccessMessage, setShowSuccessMessage] = useState(false);
+  const settingsLoadedRef = useRef(false);
   
   const [settings, setSettings] = useState<any>({
     layout: {
@@ -120,41 +109,58 @@ function AppContent() {
       animationsEnabled: true,
       showTooltips: true,
       language: 'en'
+    },
+    uiPreferences: {
+      clickAction: 'tooltip'  // 'tooltip' or 'popup'
     }
   });
 
   const sections = [
     { id: 'appearance', label: 'Appearance', icon: <PaletteIcon /> },
-    { id: 'layout', label: 'Layout', icon: <ViewModuleIcon /> },
-    { id: 'calendar', label: 'Calendar', icon: <CalendarIcon /> },
-    { id: 'behavior', label: 'Settings', icon: <SettingsIcon /> }
+    { id: 'layout', label: 'Layout', icon: <ViewModuleIcon /> }
   ];
 
   useEffect(() => {
-    // Store Wix params if present
-    storeWixParams();
-    loadSettings();
+    // Prevent duplicate calls in React.StrictMode
+    if (settingsLoadedRef.current) return;
+    settingsLoadedRef.current = true;
 
-    // Get editor context for instance ID
-    getEditorContext().then(context => {
-      if (context) {
-        console.log('Editor context loaded:', context);
+    const initializeSettings = async () => {
+      // Store Wix params if present
+      storeWixParams();
+
+      // Get editor context for instance ID
+      try {
+        const context = await getEditorContext();
+        if (context) {
+          console.log('Editor context loaded:', context);
+        }
+      } catch (error) {
+        console.log('Editor context not available');
       }
-    });
 
-    // Load widget properties if available
-    getWidgetProps().then(props => {
-      if (props) {
-        console.log('Widget properties loaded:', props);
-        // You can map widget props to settings here if needed
+      // Load widget properties if available
+      try {
+        const props = await getWidgetProps();
+        if (props) {
+          console.log('Widget properties loaded:', props);
+          // You can map widget props to settings here if needed
+        }
+      } catch (error) {
+        console.log('Widget properties not available');
       }
-    });
 
-    // Listen for settings updates from Wix
-    onSettingsUpdate((data) => {
-      console.log('Settings updated from Wix:', data);
+      // Load settings from backend once
       loadSettings();
-    });
+
+      // Listen for settings updates from Wix
+      onSettingsUpdate((data) => {
+        console.log('Settings updated from Wix:', data);
+        loadSettings();
+      });
+    };
+
+    initializeSettings();
   }, []);
 
   const loadSettings = async () => {
@@ -209,11 +215,6 @@ function AppContent() {
     }
   };
 
-  const resetSettings = () => {
-    loadSettings();
-    showInfo('Settings reset to last saved state');
-  };
-
   const updateSetting = (section: string, key: string, value: any) => {
     setSettings((prev: any) => ({
       ...prev,
@@ -224,34 +225,14 @@ function AppContent() {
     }));
   };
 
-  const handleColorSelect = (color: string) => {
-    updateSetting('appearance', 'primaryColor', color);
-    setShowColorPicker(false);
-  };
-
   return (
     <Box className="modern-settings-container">
       {/* Two Column Layout without header */}
       <Box className="modern-layout no-header">
         {/* Sidebar Navigation */}
         <Box className="sidebar">
-          <nav className="sidebar-nav" role="navigation" aria-label="Settings navigation">
-            {sections.map((section) => (
-              <button
-                key={section.id}
-                className={`sidebar-item ${activeSection === section.id ? 'active' : ''}`}
-                onClick={() => setActiveSection(section.id)}
-                aria-current={activeSection === section.id ? 'page' : undefined}
-                tabIndex={0}
-              >
-                <span className="sidebar-icon" aria-hidden="true">{section.icon}</span>
-                <span className="sidebar-label">{section.label}</span>
-              </button>
-            ))}
-          </nav>
-
-          {/* Action buttons at bottom of sidebar */}
-          <Box className="sidebar-actions">
+          {/* Action buttons at top of sidebar */}
+          <Box className="sidebar-actions" style={{ marginBottom: '16px' }}>
             <Button
               variant="outlined"
               fullWidth
@@ -267,16 +248,6 @@ function AppContent() {
               Dashboard
             </Button>
             <Button
-              variant="outlined"
-              fullWidth
-              startIcon={<RefreshIcon />}
-              onClick={resetSettings}
-              className="reset-button"
-              size="medium"
-            >
-              Reset All
-            </Button>
-            <Button
               variant="contained"
               fullWidth
               startIcon={isSaving ? <span className="loading-spinner" /> : <SaveIcon />}
@@ -288,6 +259,22 @@ function AppContent() {
               {isSaving ? 'Saving...' : 'Save Changes'}
             </Button>
           </Box>
+
+          <nav className="sidebar-nav" role="navigation" aria-label="Settings navigation" style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+            {sections.map((section) => (
+              <button
+                key={section.id}
+                className={`sidebar-item ${activeSection === section.id ? 'active' : ''}`}
+                onClick={() => setActiveSection(section.id)}
+                aria-current={activeSection === section.id ? 'page' : undefined}
+                tabIndex={0}
+                style={{ width: 'calc(50% - 4px)' }}
+              >
+                <span className="sidebar-icon" aria-hidden="true">{section.icon}</span>
+                <span className="sidebar-label">{section.label}</span>
+              </button>
+            ))}
+          </nav>
         </Box>
 
         {/* Main Content Area */}
@@ -296,164 +283,245 @@ function AppContent() {
         {/* Content Sections */}
       {activeSection === 'appearance' && (
         <Box className="settings-section">
-          <Typography className="section-title">
-            Theme Colors
-          </Typography>
-          
-          {/* Color Selection */}
-          <Box className="form-group">
-            <Typography className="form-label">Primary Color</Typography>
-            <Box className="color-grid">
-              {COLOR_PRESETS.map((preset) => (
-                <Box
-                  key={preset.name}
-                  className={`color-option ${settings.appearance.primaryColor === preset.value ? 'selected' : ''}`}
-                  onClick={() => handleColorSelect(preset.value)}
-                  sx={{ backgroundColor: preset.value }}
-                >
-                  <Typography className="color-name">{preset.name}</Typography>
-                  {settings.appearance.primaryColor === preset.value && (
-                    <Box className="color-check">
-                      <CheckIcon sx={{ fontSize: 14, color: preset.value }} />
+          {/* Color Selection Card */}
+          <Paper
+            elevation={0}
+            sx={{
+              p: 2,
+              mb: 2,
+              borderRadius: '8px',
+              border: '1px solid #E2E8F0',
+              backgroundColor: '#FAFAFA'
+            }}
+          >
+            <Typography sx={{ fontSize: '13px', fontWeight: 600, mb: 1.5, color: '#334155', letterSpacing: '-0.01em' }}>
+              Primary Color
+            </Typography>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+              <TextField
+                type="color"
+                value={settings.appearance.primaryColor || '#2563eb'}
+                onChange={(e) => updateSetting('appearance', 'primaryColor', e.target.value)}
+                size="small"
+                sx={{
+                  width: '60px',
+                  '& input': {
+                    height: '36px',
+                    cursor: 'pointer',
+                    borderRadius: '8px'
+                  }
+                }}
+              />
+              <Box
+                sx={{
+                  flex: 1,
+                  height: '36px',
+                  borderRadius: '8px',
+                  backgroundColor: settings.appearance.primaryColor || '#2563eb',
+                  border: '1px solid #E2E8F0',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: 'white',
+                  fontWeight: 600,
+                  fontSize: '13px',
+                  textShadow: '0 1px 2px rgba(0,0,0,0.2)'
+                }}
+              >
+                {settings.appearance.primaryColor || '#2563eb'}
+              </Box>
+            </Box>
+          </Paper>
+
+          {/* Event Click Behavior Card */}
+          <Paper
+            elevation={0}
+            sx={{
+              p: 2,
+              mb: 2,
+              borderRadius: '8px',
+              border: '1px solid #E2E8F0',
+              backgroundColor: '#FAFAFA'
+            }}
+          >
+            <Typography sx={{ fontSize: '13px', fontWeight: 600, mb: 1.5, color: '#334155', letterSpacing: '-0.01em' }}>
+              Event Click Behavior
+            </Typography>
+            <RadioGroup
+              value={settings.uiPreferences?.clickAction || 'tooltip'}
+              onChange={(e) => updateSetting('uiPreferences', 'clickAction', e.target.value)}
+            >
+              <Paper
+                elevation={0}
+                sx={{
+                  p: 1.5,
+                  mb: 1,
+                  borderRadius: '8px',
+                  border: '1px solid',
+                  borderColor: settings.uiPreferences?.clickAction === 'tooltip'
+                    ? settings.appearance.primaryColor || '#667eea'
+                    : '#E2E8F0',
+                  backgroundColor: settings.uiPreferences?.clickAction === 'tooltip'
+                    ? `${settings.appearance.primaryColor}10` || '#667eea10'
+                    : 'transparent',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s'
+                }}
+              >
+                <FormControlLabel
+                  value="tooltip"
+                  control={<Radio size="small" />}
+                  label={
+                    <Box>
+                      <Typography sx={{ fontWeight: 600, fontSize: '13px' }}>Tooltip</Typography>
+                      <Typography variant="caption" color="text.secondary" sx={{ fontSize: '11px' }}>
+                        Show event details in a compact tooltip near the event
+                      </Typography>
                     </Box>
-                  )}
-                </Box>
-              ))}
-            </Box>
-          </Box>
+                  }
+                  sx={{ width: '100%', margin: 0 }}
+                />
+              </Paper>
+              <Paper
+                elevation={0}
+                sx={{
+                  p: 1.5,
+                  borderRadius: '8px',
+                  border: '1px solid',
+                  borderColor: settings.uiPreferences?.clickAction === 'popup'
+                    ? settings.appearance.primaryColor || '#667eea'
+                    : '#E2E8F0',
+                  backgroundColor: settings.uiPreferences?.clickAction === 'popup'
+                    ? `${settings.appearance.primaryColor}10` || '#667eea10'
+                    : 'transparent',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s'
+                }}
+              >
+                <FormControlLabel
+                  value="popup"
+                  control={<Radio size="small" />}
+                  label={
+                    <Box>
+                      <Typography sx={{ fontWeight: 600, fontSize: '13px' }}>Popup Modal</Typography>
+                      <Typography variant="caption" color="text.secondary" sx={{ fontSize: '11px' }}>
+                        Show event details in a centered modal dialog
+                      </Typography>
+                    </Box>
+                  }
+                  sx={{ width: '100%', margin: 0 }}
+                />
+              </Paper>
+            </RadioGroup>
+          </Paper>
 
-          <Divider className="divider" />
-
-          {/* Typography Settings */}
-          <Typography className="section-title" sx={{ mt: 3 }}>
-            Typography
-          </Typography>
-
-          <Box className="form-group">
-            <Typography className="form-label">
-              <FormatSizeIcon sx={{ fontSize: 16, verticalAlign: 'middle', mr: 0.5 }} />
-              Font Size
+          {/* Language Selection Card */}
+          <Paper
+            elevation={0}
+            sx={{
+              p: 2,
+              mb: 2,
+              borderRadius: '8px',
+              border: '1px solid #E2E8F0',
+              backgroundColor: '#FAFAFA'
+            }}
+          >
+            <Typography sx={{ fontSize: '13px', fontWeight: 600, mb: 1.5, color: '#334155', letterSpacing: '-0.01em' }}>
+              Language
             </Typography>
-            <Box className="slider-container">
-              <Box className="slider-header">
-                <Typography variant="caption" color="text.secondary">Size</Typography>
-                <Box className="slider-value">
-                  {settings.appearance.fontSize === 'small' ? '14px' : 
-                   settings.appearance.fontSize === 'medium' ? '16px' : '18px'}
-                </Box>
-              </Box>
-              <Slider
-                value={settings.appearance.fontSize === 'small' ? 14 : 
-                        settings.appearance.fontSize === 'medium' ? 16 : 18}
-                onChange={(e, value) => updateSetting('appearance', 'fontSize', 
-                  value === 14 ? 'small' : value === 16 ? 'medium' : 'large'
-                )}
-                min={14}
-                max={18}
-                step={2}
-                marks={[
-                  { value: 14, label: 'S' },
-                  { value: 16, label: 'M' },
-                  { value: 18, label: 'L' }
-                ]}
-              />
-            </Box>
-          </Box>
+            <Select
+              value={settings.behavior?.language || 'en'}
+              onChange={(e) => updateSetting('behavior', 'language', e.target.value)}
+              size="small"
+              fullWidth
+              sx={{
+                borderRadius: '8px',
+                '& .MuiOutlinedInput-notchedOutline': {
+                  borderColor: '#E2E8F0'
+                },
+                '&:hover .MuiOutlinedInput-notchedOutline': {
+                  borderColor: settings.appearance.primaryColor || '#667eea'
+                },
+                '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                  borderColor: settings.appearance.primaryColor || '#667eea'
+                }
+              }}
+            >
+              <MenuItem value="en">🇬🇧 English</MenuItem>
+              <MenuItem value="es">🇪🇸 Español</MenuItem>
+              <MenuItem value="fr">🇫🇷 Français</MenuItem>
+              <MenuItem value="de">🇩🇪 Deutsch</MenuItem>
+              <MenuItem value="it">🇮🇹 Italiano</MenuItem>
+            </Select>
+          </Paper>
 
-          <Box className="form-group">
-            <Typography className="form-label">
-              <BorderIcon sx={{ fontSize: 16, verticalAlign: 'middle', mr: 0.5 }} />
-              Border Radius
+          {/* Calendar Settings Card */}
+          <Paper
+            elevation={0}
+            sx={{
+              p: 2,
+              borderRadius: '8px',
+              border: '1px solid #E2E8F0',
+              backgroundColor: '#FAFAFA'
+            }}
+          >
+            <Typography sx={{ fontSize: '13px', fontWeight: 600, mb: 1.5, color: '#334155', letterSpacing: '-0.01em' }}>
+              Calendar Preferences
             </Typography>
-            <Box className="slider-container">
-              <Box className="slider-header">
-                <Typography variant="caption" color="text.secondary">Radius</Typography>
-                <Box className="slider-value">{settings.appearance.borderRadius}px</Box>
+            <Box sx={{ display: 'flex', gap: 3, flexWrap: 'wrap' }}>
+              <Box sx={{ flex: '1 1 200px' }}>
+                <Typography sx={{ fontWeight: 600, mb: 0.5, fontSize: '12px', color: '#64748B' }}>
+                  Week Starts On
+                </Typography>
+                <RadioGroup
+                  row
+                  value={settings.calendar?.weekStartsOn || 'sunday'}
+                  onChange={(e) => updateSetting('calendar', 'weekStartsOn', e.target.value)}
+                >
+                  <FormControlLabel
+                    value="sunday"
+                    control={<Radio size="small" />}
+                    label={<Typography sx={{ fontSize: '12px' }}>Sunday</Typography>}
+                    sx={{ mr: 2 }}
+                  />
+                  <FormControlLabel
+                    value="monday"
+                    control={<Radio size="small" />}
+                    label={<Typography sx={{ fontSize: '12px' }}>Monday</Typography>}
+                  />
+                </RadioGroup>
               </Box>
-              <Slider
-                value={settings.appearance.borderRadius}
-                onChange={(e, value) => updateSetting('appearance', 'borderRadius', value)}
-                min={0}
-                max={16}
-                step={2}
-                marks
-              />
+
+              <Box sx={{ flex: '1 1 200px' }}>
+                <Typography sx={{ fontWeight: 600, mb: 0.5, fontSize: '12px', color: '#64748B' }}>
+                  Time Format
+                </Typography>
+                <RadioGroup
+                  row
+                  value={settings.calendar?.timeFormat || '12h'}
+                  onChange={(e) => updateSetting('calendar', 'timeFormat', e.target.value)}
+                >
+                  <FormControlLabel
+                    value="12h"
+                    control={<Radio size="small" />}
+                    label={<Typography sx={{ fontSize: '12px' }}>12h</Typography>}
+                    sx={{ mr: 2 }}
+                  />
+                  <FormControlLabel
+                    value="24h"
+                    control={<Radio size="small" />}
+                    label={<Typography sx={{ fontSize: '12px' }}>24h</Typography>}
+                  />
+                </RadioGroup>
+              </Box>
             </Box>
-          </Box>
+          </Paper>
         </Box>
       )}
 
       {activeSection === 'layout' && (
         <Box className="settings-section">
-          <Typography className="section-title">
-            Default View Selection
-          </Typography>
-
-          {/* Default Starting View */}
-          <Box className="form-group">
-            <Typography className="form-label">Default Starting View</Typography>
-            <RadioGroup
-              value={settings.layout.defaultView}
-              onChange={(e) => updateSetting('layout', 'defaultView', e.target.value)}
-            >
-              <FormControlLabel 
-                value="yogaClasses" 
-                control={<Radio size="small" />} 
-                label={
-                  <Box>
-                    <Typography>Yoga Classes</Typography>
-                    <Typography variant="caption" color="text.secondary">
-                      Show calendar view with scheduled classes
-                    </Typography>
-                  </Box>
-                }
-              />
-              <FormControlLabel 
-                value="createPlan" 
-                control={<Radio size="small" />} 
-                label={
-                  <Box>
-                    <Typography>Create Your Yoga Plan</Typography>
-                    <Typography variant="caption" color="text.secondary">
-                      Show yoga plan creation form
-                    </Typography>
-                  </Box>
-                }
-              />
-            </RadioGroup>
-          </Box>
-
-          <Divider className="divider" />
-
-          <Typography className="section-title" sx={{ mt: 3 }}>
-            Calendar Configuration
-          </Typography>
-
-          {/* Calendar View Selection */}
-          <Box className="form-group">
-            <Typography className="form-label">Default Calendar View</Typography>
-            <Box className="view-options-grid">
-              {CALENDAR_VIEWS.map((view) => (
-                <Box
-                  key={view.value}
-                  className={`view-option-card ${settings.layout.calendarView === view.value ? 'selected' : ''}`}
-                  onClick={() => updateSetting('layout', 'calendarView', view.value)}
-                >
-                  <Box className="view-option-icon">{view.icon}</Box>
-                  <Typography className="view-option-title">{view.label}</Typography>
-                  <Typography className="view-option-description">{view.description}</Typography>
-                </Box>
-              ))}
-            </Box>
-          </Box>
-
-          <Divider className="divider" />
-
           {/* Layout Options */}
-          <Typography className="section-title" sx={{ mt: 3 }}>
-            Display Options
-          </Typography>
-
           <Stack spacing={2}>
             {/* Default Mode Selection */}
             <Box className="form-group">
@@ -531,7 +599,6 @@ function AppContent() {
               </Box>
             )}
 
-
             <Box className="toggle-container">
               <Box className="toggle-label">
                 <Typography className="toggle-text">Show Mode Switcher</Typography>
@@ -567,7 +634,7 @@ function AppContent() {
                 size="small"
               />
             </Box>
-            
+
             {/* Navigation Options */}
             <Typography variant="subtitle2" sx={{ mt: 2, mb: 1, fontWeight: 600 }}>
               Navigation Elements
@@ -772,164 +839,7 @@ function AppContent() {
         </Box>
       )}
 
-      {activeSection === 'calendar' && (
-        <Box className="settings-section">
-          <Typography className="section-title">
-            <ScheduleIcon sx={{ mr: 1, fontSize: 20 }} />
-            Calendar Preferences
-          </Typography>
 
-          <Grid container spacing={3}>
-            <Grid item xs={12} md={6}>
-              <FormControl fullWidth size="small">
-                <FormLabel sx={{ mb: 1 }}>Week Starts On</FormLabel>
-                <RadioGroup
-                  value={settings.calendar.weekStartsOn}
-                  onChange={(e) => updateSetting('calendar', 'weekStartsOn', e.target.value)}
-                >
-                  <FormControlLabel 
-                    value="sunday" 
-                    control={<Radio size="small" />} 
-                    label="Sunday" 
-                  />
-                  <FormControlLabel 
-                    value="monday" 
-                    control={<Radio size="small" />} 
-                    label="Monday" 
-                  />
-                </RadioGroup>
-              </FormControl>
-            </Grid>
-
-            <Grid item xs={12} md={6}>
-              <FormControl fullWidth size="small">
-                <FormLabel sx={{ mb: 1 }}>Time Format</FormLabel>
-                <RadioGroup
-                  value={settings.calendar.timeFormat}
-                  onChange={(e) => updateSetting('calendar', 'timeFormat', e.target.value)}
-                >
-                  <FormControlLabel 
-                    value="12h" 
-                    control={<Radio size="small" />} 
-                    label="12 Hour (AM/PM)" 
-                  />
-                  <FormControlLabel 
-                    value="24h" 
-                    control={<Radio size="small" />} 
-                    label="24 Hour" 
-                  />
-                </RadioGroup>
-              </FormControl>
-            </Grid>
-          </Grid>
-
-          <Divider className="divider" />
-
-          <Box className="toggle-container">
-            <Box className="toggle-label">
-              <Typography className="toggle-text">Show Week Numbers</Typography>
-              <Typography className="toggle-description">Display week numbers in calendar view</Typography>
-            </Box>
-            <Switch
-              checked={settings.calendar.showWeekNumbers}
-              onChange={(e) => updateSetting('calendar', 'showWeekNumbers', e.target.checked)}
-              size="small"
-            />
-          </Box>
-
-          {/* Info Card */}
-          <Box className="info-card">
-            <InfoIcon className="info-icon" />
-            <Box className="info-content">
-              <Typography className="info-title">Calendar Display</Typography>
-              <Typography className="info-text">
-                These settings affect how dates and times are displayed in the calendar widget.
-                Changes will be applied immediately after saving.
-              </Typography>
-            </Box>
-          </Box>
-        </Box>
-      )}
-
-      {activeSection === 'behavior' && (
-        <Box className="settings-section">
-          <Typography className="section-title">
-            General Settings
-          </Typography>
-
-          <Stack spacing={2}>
-            <Box className="toggle-container">
-              <Box className="toggle-label">
-                <Typography className="toggle-text">Enable Animations</Typography>
-                <Typography className="toggle-description">Smooth transitions and effects</Typography>
-              </Box>
-              <Switch
-                checked={settings.behavior.animationsEnabled}
-                onChange={(e) => updateSetting('behavior', 'animationsEnabled', e.target.checked)}
-                size="small"
-              />
-            </Box>
-
-            <Box className="toggle-container">
-              <Box className="toggle-label">
-                <Typography className="toggle-text">Auto-save</Typography>
-                <Typography className="toggle-description">Automatically save user progress</Typography>
-              </Box>
-              <Switch
-                checked={settings.behavior.autoSave}
-                onChange={(e) => updateSetting('behavior', 'autoSave', e.target.checked)}
-                size="small"
-              />
-            </Box>
-
-            <Box className="toggle-container">
-              <Box className="toggle-label">
-                <Typography className="toggle-text">Show Tooltips</Typography>
-                <Typography className="toggle-description">Display helpful hints on hover</Typography>
-              </Box>
-              <Switch
-                checked={settings.behavior.showTooltips}
-                onChange={(e) => updateSetting('behavior', 'showTooltips', e.target.checked)}
-                size="small"
-              />
-            </Box>
-
-            <Box className="toggle-container">
-              <Box className="toggle-label">
-                <Typography className="toggle-text">Confirm Deletions</Typography>
-                <Typography className="toggle-description">Ask before removing items</Typography>
-              </Box>
-              <Switch
-                checked={settings.behavior.confirmBeforeDelete}
-                onChange={(e) => updateSetting('behavior', 'confirmBeforeDelete', e.target.checked)}
-                size="small"
-              />
-            </Box>
-          </Stack>
-
-          <Divider className="divider" />
-
-          {/* Language Selection */}
-          <Box className="form-group">
-            <Typography className="form-label">
-              <LanguageIcon sx={{ fontSize: 16, verticalAlign: 'middle', mr: 0.5 }} />
-              Language
-            </Typography>
-            <Select
-              value={settings.behavior.language}
-              onChange={(e) => updateSetting('behavior', 'language', e.target.value)}
-              size="small"
-              fullWidth
-            >
-              <MenuItem value="en">English</MenuItem>
-              <MenuItem value="es">Español</MenuItem>
-              <MenuItem value="fr">Français</MenuItem>
-              <MenuItem value="de">Deutsch</MenuItem>
-              <MenuItem value="it">Italiano</MenuItem>
-            </Select>
-          </Box>
-        </Box>
-      )}
 
           </Box> {/* End of content-wrapper */}
         </Box> {/* End of main-content */}
