@@ -68,19 +68,12 @@ function AppContent() {
       calendarView: 'month',  // legacy - kept for backward compatibility
       showModeSwitcher: true,  // Show form/calendar mode switcher
       showCalendarHeader: true,  // Show calendar header with view options
-      showHeader: true,
-      showMainHeader: true,  // Main header with navigation tabs
       headerTitle: 'Yoga Classes',
       showFooter: false,
       compactMode: false,
       // New visibility settings
       showCreatePlanOption: true,
       showYogaClassesOption: true,
-      showCalendarToggle: true,
-      showLanguageSelector: true,
-      showThemeToggle: true,
-      showSearchBar: true,
-      showFilters: true,
       showInstructorInfo: true,
       showClassDuration: true,
       showClassLevel: true,
@@ -623,18 +616,6 @@ function AppContent() {
               />
             </Box>
 
-            <Box className="toggle-container">
-              <Box className="toggle-label">
-                <Typography className="toggle-text">Show Main Header</Typography>
-                <Typography className="toggle-description">Display main navigation header with tabs</Typography>
-              </Box>
-              <Switch
-                checked={settings.layout.showMainHeader}
-                onChange={(e) => updateSetting('layout', 'showMainHeader', e.target.checked)}
-                size="small"
-              />
-            </Box>
-
             {/* Navigation Options */}
             <Typography variant="subtitle2" sx={{ mt: 2, mb: 1, fontWeight: 600 }}>
               Navigation Elements
@@ -660,85 +641,6 @@ function AppContent() {
               <Switch
                 checked={settings.layout.showYogaClassesOption}
                 onChange={(e) => updateSetting('layout', 'showYogaClassesOption', e.target.checked)}
-                size="small"
-              />
-            </Box>
-
-            <Box className="toggle-container">
-              <Box className="toggle-label">
-                <Typography className="toggle-text">Show Calendar Toggle</Typography>
-                <Typography className="toggle-description">Allow users to switch calendar views</Typography>
-              </Box>
-              <Switch
-                checked={settings.layout.showCalendarToggle}
-                onChange={(e) => updateSetting('layout', 'showCalendarToggle', e.target.checked)}
-                size="small"
-              />
-            </Box>
-
-            <Divider sx={{ my: 2 }} />
-            
-            {/* UI Elements */}
-            <Typography variant="subtitle2" sx={{ mt: 1, mb: 1, fontWeight: 600 }}>
-              Interface Elements
-            </Typography>
-
-            <Box className="toggle-container">
-              <Box className="toggle-label">
-                <Typography className="toggle-text">Show Header</Typography>
-                <Typography className="toggle-description">Display widget header with title</Typography>
-              </Box>
-              <Switch
-                checked={settings.layout.showHeader}
-                onChange={(e) => updateSetting('layout', 'showHeader', e.target.checked)}
-                size="small"
-              />
-            </Box>
-
-            <Box className="toggle-container">
-              <Box className="toggle-label">
-                <Typography className="toggle-text">Show Search Bar</Typography>
-                <Typography className="toggle-description">Enable class search functionality</Typography>
-              </Box>
-              <Switch
-                checked={settings.layout.showSearchBar}
-                onChange={(e) => updateSetting('layout', 'showSearchBar', e.target.checked)}
-                size="small"
-              />
-            </Box>
-
-            <Box className="toggle-container">
-              <Box className="toggle-label">
-                <Typography className="toggle-text">Show Filters</Typography>
-                <Typography className="toggle-description">Enable filtering options for classes</Typography>
-              </Box>
-              <Switch
-                checked={settings.layout.showFilters}
-                onChange={(e) => updateSetting('layout', 'showFilters', e.target.checked)}
-                size="small"
-              />
-            </Box>
-
-            <Box className="toggle-container">
-              <Box className="toggle-label">
-                <Typography className="toggle-text">Show Language Selector</Typography>
-                <Typography className="toggle-description">Allow users to change language</Typography>
-              </Box>
-              <Switch
-                checked={settings.layout.showLanguageSelector}
-                onChange={(e) => updateSetting('layout', 'showLanguageSelector', e.target.checked)}
-                size="small"
-              />
-            </Box>
-
-            <Box className="toggle-container">
-              <Box className="toggle-label">
-                <Typography className="toggle-text">Show Theme Toggle</Typography>
-                <Typography className="toggle-description">Allow users to switch between themes</Typography>
-              </Box>
-              <Switch
-                checked={settings.layout.showThemeToggle}
-                onChange={(e) => updateSetting('layout', 'showThemeToggle', e.target.checked)}
                 size="small"
               />
             </Box>
