@@ -2,8 +2,23 @@ import axios, { AxiosInstance, AxiosError } from 'axios';
 import { createClient } from '@wix/sdk';
 import { site } from '@wix/site';
 
-// API Configuration
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000/api';
+// API Configuration - dynamically determine based on environment
+const getAPIUrl = () => {
+  // If explicitly set in environment, use that
+  if (process.env.REACT_APP_API_URL) {
+    return process.env.REACT_APP_API_URL;
+  }
+
+  // In production, determine from hostname
+  if (window.location.hostname.includes('nextechspires.com')) {
+    return 'https://yoga-api.nextechspires.com/api';
+  }
+
+  // Local development fallback
+  return 'http://localhost:8000/api';
+};
+
+const API_URL = getAPIUrl();
 
 // Initialize Wix client with site.auth() for automatic token management
 let wixClient: any = null;
