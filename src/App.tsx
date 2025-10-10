@@ -112,29 +112,30 @@ function AppContent() {
     { id: 'layout', label: 'Layout', icon: <ViewModuleIcon /> }
   ];
 
-  // Define loadSettings with useCallback to ensure it's available to event listeners
-  const loadSettings = useCallback(async () => {
-    console.log('loadSettings() called - attempting to fetch UI preferences');
-    try {
-      console.log('Calling settingsAPI.getUIPreferences()...');
-      const data = await settingsAPI.getUIPreferences();
-      console.log('Settings loaded successfully:', data);
-      if (data) {
-        setSettings((prev: any) => ({
-          ...prev,
-          ...data
-        }));
-        console.log('Settings state updated');
-      } else {
-        console.log('No settings data returned from API');
-      }
-    } catch (error) {
-      console.error('Failed to load settings:', error);
-      showError('Failed to load settings');
-    }
-  }, [showError]);
-
   useEffect(() => {
+    console.log('useEffect running - initializing settings');
+
+    const loadSettings = async () => {
+      console.log('loadSettings() called - attempting to fetch UI preferences');
+      try {
+        console.log('Calling settingsAPI.getUIPreferences()...');
+        const data = await settingsAPI.getUIPreferences();
+        console.log('Settings loaded successfully:', data);
+        if (data) {
+          setSettings((prev: any) => ({
+            ...prev,
+            ...data
+          }));
+          console.log('Settings state updated');
+        } else {
+          console.log('No settings data returned from API');
+        }
+      } catch (error) {
+        console.error('Failed to load settings:', error);
+        showError('Failed to load settings');
+      }
+    };
+
     const initializeSettings = async () => {
       // Store Wix params if present
       storeWixParams();
@@ -161,7 +162,7 @@ function AppContent() {
       }
 
       // Load settings from backend
-      loadSettings();
+      await loadSettings();
 
       // Listen for settings updates from Wix
       onSettingsUpdate((data) => {
@@ -195,7 +196,7 @@ function AppContent() {
     };
 
     initializeSettings();
-  }, [loadSettings]);
+  }, [showError]);
 
   const saveSettings = async () => {
     setIsSaving(true);
