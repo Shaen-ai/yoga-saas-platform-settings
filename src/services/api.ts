@@ -82,6 +82,9 @@ const apiClient: AxiosInstance = axios.create({
   timeout: 10000,
   headers: {
     'Content-Type': 'application/json',
+    'Cache-Control': 'no-cache, no-store, must-revalidate',
+    'Pragma': 'no-cache',
+    'Expires': '0',
   },
 });
 
@@ -157,6 +160,9 @@ const makeAuthenticatedRequest = async (url: string, options: any = {}) => {
         method: options.method || 'GET',
         headers: {
           'Content-Type': 'application/json',
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0',
           ...getWixHeaders(),
           ...options.headers
         },
@@ -197,7 +203,10 @@ const makeAuthenticatedRequest = async (url: string, options: any = {}) => {
 export const settingsAPI = {
   // Get UI preferences
   getUIPreferences: async () => {
-    return await makeAuthenticatedRequest('/settings/ui-preferences');
+    // Add timestamp to bust cache
+    return await makeAuthenticatedRequest('/settings/ui-preferences', {
+      params: { _t: Date.now() }
+    });
   },
 
   // Save UI preferences
