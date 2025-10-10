@@ -6,7 +6,7 @@
   "homepage": ".",
   "scripts": {
     "start": "PORT=3003 react-scripts start",
-    "build": "BUILD_PATH=build GENERATE_SOURCEMAP=false REACT_APP_ENV=production REACT_APP_BUILD_TIME=$(date +%s) react-scripts build",
+    "build": "BUILD_PATH=build GENERATE_SOURCEMAP=false REACT_APP_ENV=production REACT_APP_BUILD_TIME=$(date +%s) react-scripts build && node add-cache-bust.js",
     "test": "react-scripts test",
     "eject": "react-scripts eject"
   },
