@@ -66,12 +66,17 @@
             }
           }
 
-          // Get component info
+          // Get component info (requires callback)
           if (window.Wix.getComponentInfo) {
-            const compInfo = window.Wix.getComponentInfo();
-            if (compInfo && compInfo.compId) {
-              sessionStorage.setItem('wixCompId', compInfo.compId);
-              console.log('Stored compId from component info:', compInfo.compId);
+            try {
+              window.Wix.getComponentInfo(function(compInfo) {
+                if (compInfo && compInfo.compId) {
+                  sessionStorage.setItem('wixCompId', compInfo.compId);
+                  console.log('Stored compId from component info:', compInfo.compId);
+                }
+              });
+            } catch (e) {
+              console.log('Error getting component info:', e);
             }
           }
 
