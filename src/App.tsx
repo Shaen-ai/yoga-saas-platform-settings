@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   Box,
   Typography,
@@ -113,6 +113,28 @@ function AppContent() {
     { id: 'layout', label: 'Layout', icon: <ViewModuleIcon /> }
   ];
 
+  // Define loadSettings with useCallback to ensure it's available to event listeners
+  const loadSettings = useCallback(async () => {
+    console.log('loadSettings() called - attempting to fetch UI preferences');
+    try {
+      console.log('Calling settingsAPI.getUIPreferences()...');
+      const data = await settingsAPI.getUIPreferences();
+      console.log('Settings loaded successfully:', data);
+      if (data) {
+        setSettings((prev: any) => ({
+          ...prev,
+          ...data
+        }));
+        console.log('Settings state updated');
+      } else {
+        console.log('No settings data returned from API');
+      }
+    } catch (error) {
+      console.error('Failed to load settings:', error);
+      showError('Failed to load settings');
+    }
+  }, [showError]);
+
   useEffect(() => {
     // Prevent duplicate calls in React.StrictMode during initial mount
     if (settingsLoadedRef.current) return;
@@ -178,28 +200,7 @@ function AppContent() {
     };
 
     initializeSettings();
-  }, []);
-
-  const loadSettings = async () => {
-    console.log('loadSettings() called - attempting to fetch UI preferences');
-    try {
-      console.log('Calling settingsAPI.getUIPreferences()...');
-      const data = await settingsAPI.getUIPreferences();
-      console.log('Settings loaded successfully:', data);
-      if (data) {
-        setSettings((prev: any) => ({
-          ...prev,
-          ...data
-        }));
-        console.log('Settings state updated');
-      } else {
-        console.log('No settings data returned from API');
-      }
-    } catch (error) {
-      console.error('Failed to load settings:', error);
-      showError('Failed to load settings');
-    }
-  };
+  }, [loadSettings]);
 
   const saveSettings = async () => {
     setIsSaving(true);
