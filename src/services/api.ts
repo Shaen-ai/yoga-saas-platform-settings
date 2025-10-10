@@ -50,15 +50,10 @@ const getWixClient = () => {
 const getWixHeaders = (): Record<string, string> => {
   const headers: Record<string, string> = {};
 
-  const compId = sessionStorage.getItem('wixCompId') || localStorage.getItem('wixCompId');
-  const instance = sessionStorage.getItem('wixInstance') || localStorage.getItem('wixInstance');
-
-  if (compId) headers['X-Wix-Comp-Id'] = compId;
-  if (instance) headers['X-Wix-Instance'] = instance;
-
-  // Generate tenant ID from compId and instance
-  const tenantId = `${compId || 'default'}_${instance || 'default'}`;
-  headers['X-Tenant-Id'] = tenantId;
+  // Always use 'default' for compId and instance
+  headers['X-Wix-Comp-Id'] = 'default';
+  headers['X-Wix-Instance'] = 'default';
+  headers['X-Tenant-Id'] = 'default_default';
 
   return headers;
 };
@@ -67,11 +62,9 @@ const getWixHeaders = (): Record<string, string> => {
 const getWixParams = (): Record<string, string> => {
   const params: Record<string, string> = {};
 
-  const compId = sessionStorage.getItem('wixCompId') || localStorage.getItem('wixCompId') || 'default';
-  const instance = sessionStorage.getItem('wixInstance') || localStorage.getItem('wixInstance') || 'default';
-
-  params.compId = compId;
-  params.instance = instance;
+  // Always use 'default' for compId and instance to avoid waiting for Wix SDK
+  params.compId = 'default';
+  params.instance = 'default';
 
   return params;
 };
