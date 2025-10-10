@@ -58,7 +58,6 @@ function AppContent() {
   const [activeSection, setActiveSection] = useState('appearance');
   const [isSaving, setIsSaving] = useState(false);
   const [showSuccessMessage, setShowSuccessMessage] = useState(false);
-  const settingsLoadedRef = useRef(false);
   
   const [settings, setSettings] = useState<any>({
     layout: {
@@ -136,10 +135,6 @@ function AppContent() {
   }, [showError]);
 
   useEffect(() => {
-    // Prevent duplicate calls in React.StrictMode during initial mount
-    if (settingsLoadedRef.current) return;
-    settingsLoadedRef.current = true;
-
     const initializeSettings = async () => {
       // Store Wix params if present
       storeWixParams();
