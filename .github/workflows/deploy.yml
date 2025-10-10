@@ -23,9 +23,9 @@ jobs:
       - name: List build output
         run: |
           echo "Build output:"
-          ls -la dist/
+          ls -la build/
           echo "Files to deploy:"
-          find dist -type f
+          find build -type f
 
       - name: Deploy to server
         uses: appleboy/ssh-action@v1.0.0
@@ -41,6 +41,6 @@ jobs:
           host: ${{ secrets.SERVER_HOST }}
           username: ${{ secrets.SERVER_USERNAME }}
           password: ${{ secrets.SERVER_PASSWORD }}
-          source: "dist/*"
+          source: "build/*"
           target: "/var/www/yoga-settings.nextechspires.com/"
           strip_components: 1
