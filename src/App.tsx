@@ -157,13 +157,19 @@ function AppContent() {
   }, []);
 
   const loadSettings = async () => {
+    console.log('loadSettings() called - attempting to fetch UI preferences');
     try {
+      console.log('Calling settingsAPI.getUIPreferences()...');
       const data = await settingsAPI.getUIPreferences();
+      console.log('Settings loaded successfully:', data);
       if (data) {
         setSettings((prev: any) => ({
           ...prev,
           ...data
         }));
+        console.log('Settings state updated');
+      } else {
+        console.log('No settings data returned from API');
       }
     } catch (error) {
       console.error('Failed to load settings:', error);
