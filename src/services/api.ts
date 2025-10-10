@@ -6,19 +6,28 @@ import { site } from '@wix/site';
 const getAPIUrl = () => {
   // If explicitly set in environment, use that
   if (process.env.REACT_APP_API_URL) {
+    console.log('Using REACT_APP_API_URL:', process.env.REACT_APP_API_URL);
     return process.env.REACT_APP_API_URL;
   }
 
-  // In production, determine from hostname
-  if (window.location.hostname.includes('nextechspires.com')) {
+  // Check if we're in a Wix environment (loaded in iframe from Wix domains)
+  const isInWixEditor = window.location.hostname.includes('wix.com') ||
+                        window.location.hostname.includes('editorx.com') ||
+                        window !== window.parent;
+
+  // If in production domain or Wix environment, use production API
+  if (window.location.hostname.includes('nextechspires.com') || isInWixEditor) {
+    console.log('Using production API (nextechspires.com) - hostname:', window.location.hostname);
     return 'https://yoga-api.nextechspires.com/api';
   }
 
   // Local development fallback
+  console.log('Using local API (localhost) - hostname:', window.location.hostname);
   return 'http://localhost:8000/api';
 };
 
 const API_URL = getAPIUrl();
+console.log('API URL initialized:', API_URL);
 
 // Initialize Wix client with site.auth() for automatic token management
 let wixClient: any = null;
@@ -131,6 +140,8 @@ const makeAuthenticatedRequest = async (url: string, options: any = {}) => {
   const client = getWixClient();
   const wixParams = getWixParams();
 
+  console.log('makeAuthenticatedRequest called:', { url, method: options.method || 'GET', wixParams });
+
   // Try to use Wix fetchWithAuth first
   if (client && client.fetchWithAuth) {
     try {
@@ -139,6 +150,8 @@ const makeAuthenticatedRequest = async (url: string, options: any = {}) => {
       Object.entries(wixParams).forEach(([key, value]) => {
         urlWithParams.searchParams.set(key, value);
       });
+
+      console.log('Using Wix fetchWithAuth:', urlWithParams.toString());
 
       const response = await client.fetchWithAuth(urlWithParams.toString(), {
         method: options.method || 'GET',
@@ -149,23 +162,35 @@ const makeAuthenticatedRequest = async (url: string, options: any = {}) => {
         },
         body: options.data ? JSON.stringify(options.data) : undefined
       });
-      return await response.json();
+
+      const data = await response.json();
+      console.log('fetchWithAuth response:', data);
+      return data;
     } catch (error) {
-      console.log('fetchWithAuth failed, falling back to axios:', error);
+      console.error('fetchWithAuth failed, falling back to axios:', error);
     }
+  } else {
+    console.log('Wix client not available, using axios');
   }
 
   // Fallback to axios - add Wix params to all requests
-  const axiosConfig = {
-    url,
-    ...options,
-    params: {
-      ...wixParams,
-      ...options.params
-    }
-  };
-  const response = await apiClient.request(axiosConfig);
-  return response.data;
+  try {
+    const axiosConfig = {
+      url,
+      ...options,
+      params: {
+        ...wixParams,
+        ...options.params
+      }
+    };
+    console.log('Using axios with config:', axiosConfig);
+    const response = await apiClient.request(axiosConfig);
+    console.log('Axios response:', response.data);
+    return response.data;
+  } catch (error) {
+    console.error('Axios request failed:', error);
+    throw error;
+  }
 };
 
 // Settings API
