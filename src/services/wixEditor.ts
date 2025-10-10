@@ -38,10 +38,19 @@ export const getWidgetProps = async () => {
     if (!initializeWixEditor()) return null;
 
     const wix = (window as any).Wix;
-    if (wix?.Settings?.getStyleParams) {
+    // Use the new Wix.Styles.getStyleParams instead of deprecated Settings.getStyleParams
+    if (wix?.Styles?.getStyleParams) {
+      return new Promise((resolve) => {
+        wix.Styles.getStyleParams((styleParams: any) => {
+          console.log('Widget style properties:', styleParams);
+          resolve(styleParams);
+        });
+      });
+    } else if (wix?.Settings?.getStyleParams) {
+      // Fallback to Settings API if Styles API not available
       return new Promise((resolve) => {
         wix.Settings.getStyleParams((styleParams: any) => {
-          console.log('Widget style properties:', styleParams);
+          console.log('Widget style properties (legacy):', styleParams);
           resolve(styleParams);
         });
       });
@@ -189,9 +198,19 @@ export const refreshWidget = () => {
 /**
  * Get component info including component ID
  */
-export const getComponentInfo = () => {
-  if ((window as any).Wix?.getComponentInfo) {
-    return (window as any).Wix.getComponentInfo();
-  }
-  return null;
+export const getComponentInfo = (): Promise<any> => {
+  return new Promise((resolve) => {
+    if ((window as any).Wix?.getComponentInfo) {
+      try {
+        (window as any).Wix.getComponentInfo((compInfo: any) => {
+          resolve(compInfo);
+        });
+      } catch (error) {
+        console.error('Error getting component info:', error);
+        resolve(null);
+      }
+    } else {
+      resolve(null);
+    }
+  });
 };

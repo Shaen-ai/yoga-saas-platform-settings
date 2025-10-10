@@ -83,12 +83,20 @@ export const WixProvider: React.FC<WixProviderProps> = ({ children }) => {
               }
             }
 
-            // Get component info
+            // Get component info (requires callback)
             if (!urlCompId && wix.getComponentInfo) {
-              const compInfo = wix.getComponentInfo();
-              if (compInfo && compInfo.compId) {
-                urlCompId = compInfo.compId;
-                console.log('Got compId from component info:', compInfo.compId);
+              try {
+                wix.getComponentInfo((compInfo: any) => {
+                  if (compInfo && compInfo.compId) {
+                    const compIdFromInfo = compInfo.compId;
+                    urlCompId = compIdFromInfo;
+                    setCompId(compIdFromInfo);
+                    sessionStorage.setItem('wixCompId', compIdFromInfo);
+                    console.log('Got compId from component info:', compIdFromInfo);
+                  }
+                });
+              } catch (e) {
+                console.log('Error calling getComponentInfo:', e);
               }
             }
 
