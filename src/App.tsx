@@ -114,7 +114,7 @@ function AppContent() {
   ];
 
   useEffect(() => {
-    // Prevent duplicate calls in React.StrictMode
+    // Prevent duplicate calls in React.StrictMode during initial mount
     if (settingsLoadedRef.current) return;
     settingsLoadedRef.current = true;
 
@@ -143,7 +143,7 @@ function AppContent() {
         console.log('Widget properties not available');
       }
 
-      // Load settings from backend once
+      // Load settings from backend
       loadSettings();
 
       // Listen for settings updates from Wix
@@ -151,6 +151,30 @@ function AppContent() {
         console.log('Settings updated from Wix:', data);
         loadSettings();
       });
+
+      // Listen for panel visibility changes in Wix Editor
+      // When panel is reopened, reload settings
+      if ((window as any).Wix?.addEventListener && (window as any).Wix?.Events) {
+        console.log('Setting up Wix visibility listener');
+        (window as any).Wix.addEventListener((window as any).Wix.Events.PAGE_NAVIGATION, () => {
+          console.log('Wix PAGE_NAVIGATION event - reloading settings');
+          loadSettings();
+        });
+      }
+
+      // Also listen for custom event when panel becomes visible
+      const handleVisibilityChange = () => {
+        if (document.visibilityState === 'visible') {
+          console.log('Settings panel became visible - reloading settings');
+          loadSettings();
+        }
+      };
+      document.addEventListener('visibilitychange', handleVisibilityChange);
+
+      // Cleanup
+      return () => {
+        document.removeEventListener('visibilitychange', handleVisibilityChange);
+      };
     };
 
     initializeSettings();
