@@ -1,56 +1,12 @@
-import axios, { AxiosInstance, AxiosError } from 'axios';
-import { createClient } from '@wix/sdk';
-import { site } from '@wix/site';
+import axios, { AxiosError } from 'axios';
 
-// API Configuration - dynamically determine based on environment
-const getAPIUrl = () => {
-  // If explicitly set in environment, use that
-  if (process.env.REACT_APP_API_URL) {
-    console.log('Using REACT_APP_API_URL:', process.env.REACT_APP_API_URL);
-    return process.env.REACT_APP_API_URL;
-  }
-
-  // Check if we're in a Wix environment (loaded in iframe from Wix domains)
-  const isInWixEditor = window.location.hostname.includes('wix.com') ||
-                        window.location.hostname.includes('editorx.com') ||
-                        window !== window.parent;
-
-  // If in production domain or Wix environment, use production API
-  if (window.location.hostname.includes('nextechspires.com') || isInWixEditor) {
-    console.log('Using production API (nextechspires.com) - hostname:', window.location.hostname);
-    return 'https://yoga-api.nextechspires.com/api';
-  }
-
-  // Local development fallback
-  console.log('Using local API (localhost) - hostname:', window.location.hostname);
-  return 'http://localhost:8000/api';
-};
-
-const API_URL = getAPIUrl();
-console.log('API URL initialized:', API_URL);
-
-// Initialize Wix client with site.auth() for automatic token management
-let wixClient: any = null;
-
-const getWixClient = () => {
-  if (!wixClient) {
-    try {
-      wixClient = createClient({
-        auth: site.auth(),
-        modules: { site }
-      });
-    } catch (error) {
-      console.log('Could not initialize Wix client, using fallback');
-    }
-  }
-  return wixClient;
-};
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000/api';
 
 // Helper function to get Wix headers
 const getWixHeaders = (): Record<string, string> => {
   const headers: Record<string, string> = {};
 
-  // Always use 'default' for compId and instance
+  // Always use 'default' for Wix headers
   headers['X-Wix-Comp-Id'] = 'default';
   headers['X-Wix-Instance'] = 'default';
   headers['X-Tenant-Id'] = 'default_default';
@@ -58,57 +14,35 @@ const getWixHeaders = (): Record<string, string> => {
   return headers;
 };
 
-// Helper function to get Wix query parameters
-const getWixParams = (): Record<string, string> => {
-  const params: Record<string, string> = {};
-
-  // Always use 'default' for compId and instance to avoid waiting for Wix SDK
-  params.compId = 'default';
-  params.instance = 'default';
-
-  return params;
-};
-
 // Create axios instance with default config
-const apiClient: AxiosInstance = axios.create({
+const api = axios.create({
   baseURL: API_URL,
-  timeout: 10000,
   headers: {
     'Content-Type': 'application/json',
-    'Cache-Control': 'no-cache, no-store, must-revalidate',
-    'Pragma': 'no-cache',
-    'Expires': '0',
   },
+  timeout: 10000, // 10 seconds timeout
 });
 
 // Request interceptor for auth token and Wix headers
-apiClient.interceptors.request.use(
+api.interceptors.request.use(
   (config) => {
-    // Add Wix headers
-    const wixHeaders = getWixHeaders();
-    Object.assign(config.headers, wixHeaders);
-
-    // Add Wix params to query string for ALL requests
-    const wixParams = getWixParams();
-    config.params = {
-      ...config.params,
-      ...wixParams
-    };
-
     // Add auth token if available
     const token = localStorage.getItem('authToken');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
 
-    // Log the request for debugging in development
-    if (process.env.NODE_ENV === 'development') {
-      console.log('API Request:', {
-        url: config.url,
-        method: config.method,
-        headers: config.headers,
-        params: config.params
-      });
+    // Add Wix headers for tenant isolation
+    const wixHeaders = getWixHeaders();
+    Object.assign(config.headers, wixHeaders);
+
+    // Also add as query params for GET requests (backup)
+    if (config.method === 'get') {
+      config.params = {
+        ...config.params,
+        compId: 'default',
+        instance: 'default'
+      };
     }
 
     return config;
@@ -119,115 +53,78 @@ apiClient.interceptors.request.use(
 );
 
 // Response interceptor for error handling
-apiClient.interceptors.response.use(
+api.interceptors.response.use(
   (response) => response,
   (error: AxiosError) => {
-    if (error.response?.status === 401) {
-      // Handle unauthorized access
-      console.error('Unauthorized access - redirecting to login');
-      // You can redirect to login or refresh token here
+    if (error.response) {
+      // Server responded with error status
+      console.error('API Error:', error.response.data);
+    } else if (error.request) {
+      // Request was made but no response
+      console.error('Network Error: No response from server');
+    } else {
+      // Something else happened
+      console.error('Error:', error.message);
     }
     return Promise.reject(error);
   }
 );
 
-// Use Wix fetchWithAuth if available, otherwise fall back to axios
-const makeAuthenticatedRequest = async (url: string, options: any = {}) => {
-  const client = getWixClient();
-  const wixParams = getWixParams();
-
-  console.log('makeAuthenticatedRequest called:', { url, method: options.method || 'GET', wixParams });
-
-  // Try to use Wix fetchWithAuth first
-  if (client && client.fetchWithAuth) {
-    try {
-      // Add query parameters to URL
-      const urlWithParams = new URL(`${API_URL}${url}`);
-      Object.entries(wixParams).forEach(([key, value]) => {
-        urlWithParams.searchParams.set(key, value);
-      });
-
-      console.log('Using Wix fetchWithAuth:', urlWithParams.toString());
-
-      const response = await client.fetchWithAuth(urlWithParams.toString(), {
-        method: options.method || 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          'Cache-Control': 'no-cache, no-store, must-revalidate',
-          'Pragma': 'no-cache',
-          'Expires': '0',
-          ...getWixHeaders(),
-          ...options.headers
-        },
-        body: options.data ? JSON.stringify(options.data) : undefined
-      });
-
-      const data = await response.json();
-      console.log('fetchWithAuth response:', data);
-      return data;
-    } catch (error) {
-      console.error('fetchWithAuth failed, falling back to axios:', error);
-    }
-  } else {
-    console.log('Wix client not available, using axios');
-  }
-
-  // Fallback to axios - add Wix params to all requests
-  try {
-    const axiosConfig = {
-      url,
-      ...options,
-      params: {
-        ...wixParams,
-        ...options.params
-      }
-    };
-    console.log('Using axios with config:', axiosConfig);
-    const response = await apiClient.request(axiosConfig);
-    console.log('Axios response:', response.data);
-    return response.data;
-  } catch (error) {
-    console.error('Axios request failed:', error);
-    throw error;
-  }
-};
-
 // Settings API
 export const settingsAPI = {
   // Get UI preferences
   getUIPreferences: async () => {
-    // Add timestamp to bust cache
-    return await makeAuthenticatedRequest('/settings/ui-preferences', {
-      params: { _t: Date.now() }
-    });
+    try {
+      const response = await api.get('/settings/ui-preferences');
+      return response.data;
+    } catch (error) {
+      console.error('Failed to fetch UI preferences:', error);
+      throw error;
+    }
   },
 
   // Save UI preferences
   saveUIPreferences: async (preferences: any) => {
-    return await makeAuthenticatedRequest('/settings/ui-preferences', {
-      method: 'POST',
-      data: preferences
-    });
+    try {
+      const response = await api.post('/settings/ui-preferences', preferences);
+      return response.data;
+    } catch (error) {
+      console.error('Failed to save UI preferences:', error);
+      throw error;
+    }
   },
 
   // Get all settings
   getAllSettings: async () => {
-    return await makeAuthenticatedRequest('/settings');
+    try {
+      const response = await api.get('/settings');
+      return response.data;
+    } catch (error) {
+      console.error('Failed to fetch settings:', error);
+      throw error;
+    }
   },
 
   // Update specific setting
   updateSetting: async (key: string, value: any) => {
-    return await makeAuthenticatedRequest('/settings', {
-      method: 'PATCH',
-      data: { [key]: value }
-    });
+    try {
+      const response = await api.patch('/settings', { [key]: value });
+      return response.data;
+    } catch (error) {
+      console.error('Failed to update setting:', error);
+      throw error;
+    }
   },
 
   // Reset settings to defaults
   resetSettings: async () => {
-    return await makeAuthenticatedRequest('/settings/reset', {
-      method: 'POST'
-    });
+    try {
+      const response = await api.post('/settings/reset');
+      return response.data;
+    } catch (error) {
+      console.error('Failed to reset settings:', error);
+      throw error;
+    }
   },
 };
 
@@ -235,15 +132,24 @@ export const settingsAPI = {
 export const usersAPI = {
   // Get current user
   getCurrentUser: async () => {
-    return await makeAuthenticatedRequest('/users/me');
+    try {
+      const response = await api.get('/users/me');
+      return response.data;
+    } catch (error) {
+      console.error('Failed to fetch current user:', error);
+      throw error;
+    }
   },
 
   // Update user profile
   updateProfile: async (data: any) => {
-    return await makeAuthenticatedRequest('/users/profile', {
-      method: 'PUT',
-      data
-    });
+    try {
+      const response = await api.put('/users/profile', data);
+      return response.data;
+    } catch (error) {
+      console.error('Failed to update profile:', error);
+      throw error;
+    }
   },
 };
 
@@ -251,13 +157,24 @@ export const usersAPI = {
 export const analyticsAPI = {
   // Get analytics data
   getAnalytics: async (params?: { startDate?: string; endDate?: string }) => {
-    const queryString = params ? '?' + new URLSearchParams(params).toString() : '';
-    return await makeAuthenticatedRequest(`/analytics${queryString}`);
+    try {
+      const response = await api.get('/analytics', { params });
+      return response.data;
+    } catch (error) {
+      console.error('Failed to fetch analytics:', error);
+      throw error;
+    }
   },
 
   // Get widget usage stats
   getWidgetUsage: async () => {
-    return await makeAuthenticatedRequest('/analytics/widget-usage');
+    try {
+      const response = await api.get('/analytics/widget-usage');
+      return response.data;
+    } catch (error) {
+      console.error('Failed to fetch widget usage:', error);
+      throw error;
+    }
   },
 };
 
@@ -265,31 +182,46 @@ export const analyticsAPI = {
 export const eventsAPI = {
   // Get all events
   getEvents: async (params?: { type?: string; limit?: number }) => {
-    const queryString = params ? '?' + new URLSearchParams(params as any).toString() : '';
-    return await makeAuthenticatedRequest(`/events${queryString}`);
+    try {
+      const response = await api.get('/events', { params });
+      return response.data;
+    } catch (error) {
+      console.error('Failed to fetch events:', error);
+      throw error;
+    }
   },
 
   // Create new event
   createEvent: async (event: any) => {
-    return await makeAuthenticatedRequest('/events', {
-      method: 'POST',
-      data: event
-    });
+    try {
+      const response = await api.post('/events', event);
+      return response.data;
+    } catch (error) {
+      console.error('Failed to create event:', error);
+      throw error;
+    }
   },
 
   // Update event
   updateEvent: async (id: string, event: any) => {
-    return await makeAuthenticatedRequest(`/events/${id}`, {
-      method: 'PUT',
-      data: event
-    });
+    try {
+      const response = await api.put(`/events/${id}`, event);
+      return response.data;
+    } catch (error) {
+      console.error('Failed to update event:', error);
+      throw error;
+    }
   },
 
   // Delete event
   deleteEvent: async (id: string) => {
-    return await makeAuthenticatedRequest(`/events/${id}`, {
-      method: 'DELETE'
-    });
+    try {
+      const response = await api.delete(`/events/${id}`);
+      return response.data;
+    } catch (error) {
+      console.error('Failed to delete event:', error);
+      throw error;
+    }
   },
 };
 
@@ -297,35 +229,57 @@ export const eventsAPI = {
 export const yogaPlansAPI = {
   // Get all yoga plans
   getPlans: async () => {
-    return await makeAuthenticatedRequest('/yoga-plans');
+    try {
+      const response = await api.get('/yoga-plans');
+      return response.data;
+    } catch (error) {
+      console.error('Failed to fetch yoga plans:', error);
+      throw error;
+    }
   },
 
   // Get single plan
   getPlan: async (id: string) => {
-    return await makeAuthenticatedRequest(`/yoga-plans/${id}`);
+    try {
+      const response = await api.get(`/yoga-plans/${id}`);
+      return response.data;
+    } catch (error) {
+      console.error('Failed to fetch yoga plan:', error);
+      throw error;
+    }
   },
 
   // Create new plan
   createPlan: async (plan: any) => {
-    return await makeAuthenticatedRequest('/yoga-plans', {
-      method: 'POST',
-      data: plan
-    });
+    try {
+      const response = await api.post('/yoga-plans', plan);
+      return response.data;
+    } catch (error) {
+      console.error('Failed to create yoga plan:', error);
+      throw error;
+    }
   },
 
   // Update plan
   updatePlan: async (id: string, plan: any) => {
-    return await makeAuthenticatedRequest(`/yoga-plans/${id}`, {
-      method: 'PUT',
-      data: plan
-    });
+    try {
+      const response = await api.put(`/yoga-plans/${id}`, plan);
+      return response.data;
+    } catch (error) {
+      console.error('Failed to update yoga plan:', error);
+      throw error;
+    }
   },
 
   // Delete plan
   deletePlan: async (id: string) => {
-    return await makeAuthenticatedRequest(`/yoga-plans/${id}`, {
-      method: 'DELETE'
-    });
+    try {
+      const response = await api.delete(`/yoga-plans/${id}`);
+      return response.data;
+    } catch (error) {
+      console.error('Failed to delete yoga plan:', error);
+      throw error;
+    }
   },
 };
 
@@ -338,10 +292,13 @@ export const aiGenerationAPI = {
     duration?: number;
     frequency?: number;
   }) => {
-    return await makeAuthenticatedRequest('/ai-generation/plan', {
-      method: 'POST',
-      data: params
-    });
+    try {
+      const response = await api.post('/ai-generation/plan', params);
+      return response.data;
+    } catch (error) {
+      console.error('Failed to generate yoga plan:', error);
+      throw error;
+    }
   },
 
   // Generate class description
@@ -350,11 +307,14 @@ export const aiGenerationAPI = {
     level?: string;
     duration?: number;
   }) => {
-    return await makeAuthenticatedRequest('/ai-generation/class-description', {
-      method: 'POST',
-      data: params
-    });
+    try {
+      const response = await api.post('/ai-generation/class-description', params);
+      return response.data;
+    } catch (error) {
+      console.error('Failed to generate class description:', error);
+      throw error;
+    }
   },
 };
 
-export default apiClient;
+export default api;
