@@ -32,6 +32,7 @@ function AppContent() {
   const [activeSection, setActiveSection] = useState('appearance');
   const [isSaving, setIsSaving] = useState(false);
   const [showSuccessMessage, setShowSuccessMessage] = useState(false);
+  const [dashboardUrl, setDashboardUrl] = useState<string>('');
   
   const [settings, setSettings] = useState<any>({
     layout: {
@@ -96,7 +97,7 @@ function AppContent() {
         const data = await settingsAPI.getUIPreferences();
         console.log('Settings loaded successfully:', data);
         if (data) {
-          // Store auth info for dashboard URL building
+          // Store auth info and build dashboard URL
           if (data.auth) {
             console.log('Auth info received from API:', {
               compId: data.auth.compId,
@@ -104,6 +105,11 @@ function AppContent() {
               isAuthenticated: data.auth.isAuthenticated
             });
             setAuthInfo(data.auth);
+
+            // Build dashboard URL with auth info from API (like Mapsy)
+            const url = buildDashboardUrl(data.auth);
+            console.log('Dashboard URL built:', url);
+            setDashboardUrl(url);
           }
 
           setSettings((prev: any) => ({
@@ -242,12 +248,12 @@ function AppContent() {
               fullWidth
               startIcon={<DashboardIcon />}
               onClick={() => {
-                const dashboardUrl = buildDashboardUrl();
                 console.log('Opening dashboard with URL:', dashboardUrl);
-                window.open(dashboardUrl, '_blank');
+                window.open(dashboardUrl || buildDashboardUrl(), '_blank');
               }}
               className="dashboard-button"
               size="medium"
+              disabled={!dashboardUrl}
             >
               Dashboard
             </Button>
