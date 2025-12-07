@@ -32,28 +32,46 @@ export const initializeWixEditor = () => {
 
 /**
  * Get widget properties from Wix Editor (using legacy SDK)
+ * Note: Has timeout to prevent hanging if callback is never called
  */
 export const getWidgetProps = async () => {
   try {
     if (!initializeWixEditor()) return null;
 
     const wix = (window as any).Wix;
+
+    // Helper to wrap callback-based APIs with timeout
+    const withTimeout = <T>(promise: Promise<T>, ms: number): Promise<T | null> => {
+      return Promise.race([
+        promise,
+        new Promise<null>((resolve) => setTimeout(() => resolve(null), ms))
+      ]);
+    };
+
     // Use the new Wix.Styles.getStyleParams instead of deprecated Settings.getStyleParams
     if (wix?.Styles?.getStyleParams) {
-      return new Promise((resolve) => {
-        wix.Styles.getStyleParams((styleParams: any) => {
-          console.log('Widget style properties:', styleParams);
-          resolve(styleParams);
-        });
-      });
+      const result = await withTimeout(
+        new Promise((resolve) => {
+          wix.Styles.getStyleParams((styleParams: any) => {
+            console.log('Widget style properties:', styleParams);
+            resolve(styleParams);
+          });
+        }),
+        2000 // 2 second timeout
+      );
+      return result;
     } else if (wix?.Settings?.getStyleParams) {
       // Fallback to Settings API if Styles API not available
-      return new Promise((resolve) => {
-        wix.Settings.getStyleParams((styleParams: any) => {
-          console.log('Widget style properties (legacy):', styleParams);
-          resolve(styleParams);
-        });
-      });
+      const result = await withTimeout(
+        new Promise((resolve) => {
+          wix.Settings.getStyleParams((styleParams: any) => {
+            console.log('Widget style properties (legacy):', styleParams);
+            resolve(styleParams);
+          });
+        }),
+        2000 // 2 second timeout
+      );
+      return result;
     }
 
     return null;
@@ -197,12 +215,20 @@ export const refreshWidget = () => {
 
 /**
  * Get component info including component ID
+ * Note: Has timeout to prevent hanging if callback is never called
  */
 export const getComponentInfo = (): Promise<any> => {
   return new Promise((resolve) => {
     if ((window as any).Wix?.getComponentInfo) {
       try {
+        // Set timeout to prevent hanging
+        const timeoutId = setTimeout(() => {
+          console.log('getComponentInfo timed out');
+          resolve(null);
+        }, 2000);
+
         (window as any).Wix.getComponentInfo((compInfo: any) => {
+          clearTimeout(timeoutId);
           resolve(compInfo);
         });
       } catch (error) {
