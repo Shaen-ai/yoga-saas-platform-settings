@@ -114,10 +114,16 @@ export const WixProvider: React.FC<WixProviderProps> = ({ children }) => {
           }
         }
 
-        // Use appDefinitionId as fallback for compId if not found
-        if (!urlCompId && appDefinitionId) {
-          urlCompId = appDefinitionId;
-          console.log('Using appDefinitionId as compId:', appDefinitionId);
+        // Generate compId with comp- prefix if not found (like Mapsy)
+        // Note: Do NOT use appDefinitionId as compId - it's an app UUID, not a component ID
+        if (!urlCompId) {
+          const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
+          let generatedCompId = 'comp-';
+          for (let i = 0; i < 8; i++) {
+            generatedCompId += chars.charAt(Math.floor(Math.random() * chars.length));
+          }
+          urlCompId = generatedCompId;
+          console.log('Generated compId:', urlCompId);
         }
 
         // Store parameters if found

@@ -86,10 +86,18 @@ export async function initializeWixClient(): Promise<boolean> {
 }
 
 export async function fetchWithAuth(url: string, options?: RequestInit): Promise<Response> {
+  // Ensure initialization is complete before making requests
+  if (!isInitialized) {
+    console.log('[Settings] fetchWithAuth waiting for initialization...');
+    await initializeWixClient();
+  }
+
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
     ...(options?.headers as Record<string, string>),
   };
+
+  console.log('[Settings] fetchWithAuth using compId:', compId);
 
   if (compId) {
     headers['X-Wix-Comp-Id'] = compId;
