@@ -1,6 +1,17 @@
 import { fetchWithAuth, getCompId, initializeWixClient } from './wix-integration';
+import { AuthInfo } from '../utils/wixUtils';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000/api';
+
+// Type for UI preferences response from backend
+interface UIPreferencesResponse {
+  layout?: any;
+  appearance?: any;
+  calendar?: any;
+  behavior?: any;
+  uiPreferences?: any;
+  auth?: AuthInfo;
+}
 
 // Initialize Wix client on module load
 initializeWixClient();
@@ -21,9 +32,9 @@ async function apiRequest<T>(endpoint: string, options?: RequestInit): Promise<T
 // Settings API
 export const settingsAPI = {
   // Get UI preferences
-  getUIPreferences: async () => {
+  getUIPreferences: async (): Promise<UIPreferencesResponse> => {
     try {
-      return await apiRequest('/settings/ui-preferences', { method: 'GET' });
+      return await apiRequest<UIPreferencesResponse>('/settings/ui-preferences', { method: 'GET' });
     } catch (error) {
       console.error('Failed to fetch UI preferences:', error);
       throw error;
