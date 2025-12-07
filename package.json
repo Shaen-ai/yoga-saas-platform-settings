@@ -19,8 +19,6 @@
     "@wix/editor": "^1.397.0",
     "@wix/sdk": "^1.17.1",
     "@wix/site": "^1.22.0",
-    "axios": "^1.4.0",
-    "framer-motion": "^12.23.12",
     "react": "^18.2.0",
     "react-color": "^2.19.3",
     "react-dom": "^18.2.0",

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Box,
   Typography,
@@ -11,50 +11,24 @@ import {
   Divider,
   Radio,
   RadioGroup,
-  FormControl,
-  FormLabel,
-  Chip,
   Paper,
-  Slider,
   Stack,
-  Grid,
-  Card,
-  Alert,
-  InputLabel,
-  IconButton,
-  Tooltip
 } from '@mui/material';
 import {
   Palette as PaletteIcon,
-  CalendarMonth as CalendarIcon,
   Save as SaveIcon,
-  Settings as SettingsIcon,
-  Language as LanguageIcon,
-  Schedule as ScheduleIcon,
   ViewModule as ViewModuleIcon,
-  FormatSize as FormatSizeIcon,
   CheckCircle as CheckIcon,
-  Info as InfoIcon,
-  BorderStyle as BorderIcon,
   Dashboard as DashboardIcon
 } from '@mui/icons-material';
-import { ChromePicker } from 'react-color';
 import { ToastProvider, useToast } from './hooks/useToast';
 import { settingsAPI } from './services/api';
 import { storeWixParams, buildDashboardUrl, isWixEnvironment } from './utils/wixUtils';
 import { setWidgetProps, getWidgetProps, onSettingsUpdate, getEditorContext } from './services/wixEditor';
 import './App.css';
 
-// Calendar view options
-const CALENDAR_VIEWS = [
-  { value: 'month', label: 'Month', icon: '📅', description: 'Monthly view' },
-  { value: 'week', label: 'Week', icon: '📆', description: 'Weekly view' },
-  { value: 'day', label: 'Day', icon: '📖', description: 'Daily view' },
-  { value: 'list', label: 'List', icon: '📋', description: 'List view' }
-];
-
 function AppContent() {
-  const { showSuccess, showError, showInfo } = useToast();
+  const { showSuccess, showError } = useToast();
   const [activeSection, setActiveSection] = useState('appearance');
   const [isSaving, setIsSaving] = useState(false);
   const [showSuccessMessage, setShowSuccessMessage] = useState(false);
