@@ -23,7 +23,7 @@ import {
 } from '@mui/icons-material';
 import { ToastProvider, useToast } from './hooks/useToast';
 import { settingsAPI } from './services/api';
-import { storeWixParams, buildDashboardUrl, isWixEnvironment } from './utils/wixUtils';
+import { storeWixParams, buildDashboardUrl, isWixEnvironment, setAuthInfo } from './utils/wixUtils';
 import { setWidgetProps, getWidgetProps, onSettingsUpdate, getEditorContext } from './services/wixEditor';
 import './App.css';
 
@@ -96,6 +96,16 @@ function AppContent() {
         const data = await settingsAPI.getUIPreferences();
         console.log('Settings loaded successfully:', data);
         if (data) {
+          // Store auth info for dashboard URL building
+          if (data.auth) {
+            console.log('Auth info received from API:', {
+              compId: data.auth.compId,
+              instanceToken: data.auth.instanceToken ? 'present' : 'null',
+              isAuthenticated: data.auth.isAuthenticated
+            });
+            setAuthInfo(data.auth);
+          }
+
           setSettings((prev: any) => ({
             ...prev,
             ...data

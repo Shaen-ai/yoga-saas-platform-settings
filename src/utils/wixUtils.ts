@@ -9,6 +9,40 @@ interface WixParams {
   deviceType?: string;
 }
 
+export interface AuthInfo {
+  instanceId?: string | null;
+  compId?: string | null;
+  instanceToken?: string | null;
+  isAuthenticated?: boolean;
+}
+
+// Store auth info from API response
+let cachedAuthInfo: AuthInfo | null = null;
+
+/**
+ * Store auth info from API response (called when loading settings)
+ */
+export const setAuthInfo = (authInfo: AuthInfo): void => {
+  cachedAuthInfo = authInfo;
+  // Also store in session storage for persistence
+  if (authInfo.compId) {
+    sessionStorage.setItem('wixCompId', authInfo.compId);
+  }
+  if (authInfo.instanceToken) {
+    sessionStorage.setItem('wixInstance', authInfo.instanceToken);
+  }
+  console.log('[WixUtils] Auth info stored:', {
+    compId: authInfo.compId,
+    instanceToken: authInfo.instanceToken ? 'present' : 'null',
+    isAuthenticated: authInfo.isAuthenticated
+  });
+};
+
+/**
+ * Get cached auth info
+ */
+export const getAuthInfo = (): AuthInfo | null => cachedAuthInfo;
+
 /**
  * Extract Wix parameters from URL
  */
@@ -52,16 +86,19 @@ export const getStoredWixParams = (): WixParams | null => {
 
 /**
  * Build dashboard URL with Wix parameters
- * First checks session storage (set by WixProvider), then URL params
+ * Priority: 1) Cached auth info from API, 2) Session storage, 3) URL params
  */
 export const buildDashboardUrl = (baseUrl?: string): string => {
   const dashboardUrl = baseUrl || process.env.REACT_APP_DASHBOARD_URL || 'http://localhost:3002';
 
-  // Try to get from session storage first (set by WixProvider)
+  // Priority 1: Use cached auth info from API response (most reliable)
+  const authInfo = getAuthInfo();
+
+  // Priority 2: Try to get from session storage (set by WixProvider or setAuthInfo)
   const storedCompId = sessionStorage.getItem('wixCompId');
   const storedInstance = sessionStorage.getItem('wixInstance');
 
-  // Fallback to URL params
+  // Priority 3: Fallback to URL params
   const urlParams = getWixParams();
 
   // Also check current window location
@@ -69,25 +106,24 @@ export const buildDashboardUrl = (baseUrl?: string): string => {
   const currentCompId = currentUrl.searchParams.get('compId') || currentUrl.searchParams.get('comp_id');
   const currentInstance = currentUrl.searchParams.get('instance');
 
-  // Use first available source
-  const compId = storedCompId || urlParams.compId || currentCompId;
-  const instance = storedInstance || urlParams.instance || currentInstance;
+  // Use first available source (prioritize auth info from API)
+  const compId = authInfo?.compId || storedCompId || urlParams.compId || currentCompId;
+  const instance = authInfo?.instanceToken || storedInstance || urlParams.instance || currentInstance;
 
   // Log for debugging
-  console.log('Building dashboard URL:', {
+  console.log('[WixUtils] Building dashboard URL:', {
     dashboardUrl,
+    authInfoCompId: authInfo?.compId,
+    authInfoInstance: authInfo?.instanceToken ? 'present' : 'null',
     storedCompId,
-    storedInstance,
+    storedInstance: storedInstance ? 'present' : 'null',
     urlParams,
-    currentCompId,
-    currentInstance,
     finalCompId: compId,
-    finalInstance: instance,
-    currentHref: window.location.href
+    finalInstance: instance ? 'present' : 'null'
   });
 
   if (!compId && !instance) {
-    console.warn('No Wix parameters found anywhere for dashboard URL');
+    console.warn('[WixUtils] No Wix parameters found anywhere for dashboard URL');
 
     // Check if we're in an iframe and try to get params from parent
     if (window.parent !== window) {
@@ -97,14 +133,14 @@ export const buildDashboardUrl = (baseUrl?: string): string => {
         const parentInstance = parentUrl.searchParams.get('instance');
 
         if (parentCompId || parentInstance) {
-          console.log('Found params in parent frame:', { parentCompId, parentInstance });
+          console.log('[WixUtils] Found params in parent frame:', { parentCompId, parentInstance: parentInstance ? 'present' : 'null' });
           const url = new URL(dashboardUrl);
           if (parentCompId) url.searchParams.set('compId', parentCompId);
           if (parentInstance) url.searchParams.set('instance', parentInstance);
           return url.toString();
         }
       } catch (e) {
-        console.log('Could not access parent frame URL:', e);
+        console.log('[WixUtils] Could not access parent frame URL:', e);
       }
     }
 
