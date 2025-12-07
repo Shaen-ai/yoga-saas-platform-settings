@@ -25,6 +25,7 @@ import { ToastProvider, useToast } from './hooks/useToast';
 import { settingsAPI } from './services/api';
 import { storeWixParams, buildDashboardUrl, isWixEnvironment, setAuthInfo } from './utils/wixUtils';
 import { setWidgetProps, getWidgetProps, onSettingsUpdate, getEditorContext } from './services/wixEditor';
+import { getCompId, getInstanceToken } from './services/wix-integration';
 import './App.css';
 
 function AppContent() {
@@ -98,19 +99,31 @@ function AppContent() {
         console.log('Settings loaded successfully:', data);
         if (data) {
           // Store auth info and build dashboard URL
-          if (data.auth) {
-            console.log('Auth info received from API:', {
-              compId: data.auth.compId,
-              instanceToken: data.auth.instanceToken ? 'present' : 'null',
-              isAuthenticated: data.auth.isAuthenticated
-            });
-            setAuthInfo(data.auth);
+          // Use compId from wix-integration as fallback if backend doesn't return it
+          const localCompId = getCompId();
+          const localInstanceToken = getInstanceToken();
 
-            // Build dashboard URL with auth info from API (like Mapsy)
-            const url = buildDashboardUrl(data.auth);
-            console.log('Dashboard URL built:', url);
-            setDashboardUrl(url);
-          }
+          const effectiveAuth = {
+            compId: data.auth?.compId || localCompId,
+            instanceToken: data.auth?.instanceToken || localInstanceToken,
+            instanceId: data.auth?.instanceId,
+            isAuthenticated: data.auth?.isAuthenticated || !!localInstanceToken
+          };
+
+          console.log('Auth info (with fallbacks):', {
+            compId: effectiveAuth.compId,
+            instanceToken: effectiveAuth.instanceToken ? 'present' : 'null',
+            isAuthenticated: effectiveAuth.isAuthenticated,
+            fromApi: !!data.auth?.compId,
+            fromLocal: !!localCompId
+          });
+
+          setAuthInfo(effectiveAuth);
+
+          // Build dashboard URL with effective auth info
+          const url = buildDashboardUrl(effectiveAuth);
+          console.log('Dashboard URL built:', url);
+          setDashboardUrl(url);
 
           setSettings((prev: any) => ({
             ...prev,
