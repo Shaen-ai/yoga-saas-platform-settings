@@ -69,7 +69,8 @@ function AppContent() {
       showWeekNumbers: false,
       eventDisplay: 'block',
       minTime: '06:00',
-      maxTime: '22:00'
+      maxTime: '22:00',
+      showEventTime: false
     },
     behavior: {
       autoSave: true,
@@ -536,6 +537,22 @@ function AppContent() {
                     label={<Typography sx={{ fontSize: '12px' }}>24h</Typography>}
                   />
                 </RadioGroup>
+              </Box>
+
+              <Box sx={{ flex: '1 1 200px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <Box>
+                  <Typography sx={{ fontWeight: 600, fontSize: '12px', color: '#64748B' }}>
+                    Show Event Time
+                  </Typography>
+                  <Typography sx={{ fontSize: '11px', color: '#94A3B8' }}>
+                    Display time next to event titles
+                  </Typography>
+                </Box>
+                <Switch
+                  checked={settings.calendar?.showEventTime ?? false}
+                  onChange={(e) => updateSetting('calendar', 'showEventTime', e.target.checked)}
+                  size="small"
+                />
               </Box>
             </Box>
           </Paper>
