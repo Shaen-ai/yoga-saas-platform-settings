@@ -13,11 +13,14 @@ interface UIPreferencesResponse {
   auth?: AuthInfo;
 }
 
-// Initialize Wix client on module load
-initializeWixClient();
+// Initialize Wix client on module load and store the promise
+const initPromise = initializeWixClient();
 
 // Helper function to make API requests using fetchWithAuth
 async function apiRequest<T>(endpoint: string, options?: RequestInit): Promise<T> {
+  // Ensure initialization is complete before making API requests
+  await initPromise;
+
   const url = `${API_URL}${endpoint}`;
   const response = await fetchWithAuth(url, options);
 
