@@ -79,6 +79,21 @@ export async function initializeWixClient(): Promise<boolean> {
       }
     }
 
+    // Also send via postMessage to ensure widget receives it immediately
+    if (instanceToken && typeof window !== 'undefined') {
+      try {
+        // Send to all iframes (the widget should be in an iframe)
+        window.parent.postMessage({
+          type: 'yoga-instance-token',
+          instance: instanceToken,
+          compId: compId
+        }, '*');
+        console.log('[Settings] ✅ Sent instance token via postMessage');
+      } catch (e) {
+        console.log('[Settings] Could not send postMessage:', e);
+      }
+    }
+
     isInitialized = true;
     return true;
   } catch (error) {
