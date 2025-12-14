@@ -69,30 +69,6 @@ export async function initializeWixClient(): Promise<boolean> {
       }
     }
 
-    // Save instance token to widget props so widget can use it for authentication
-    if (instanceToken && wixClient.widget && wixClient.widget.setProp) {
-      try {
-        await wixClient.widget.setProp('instance', instanceToken);
-        console.log('[Settings] ✅ Saved instance token to widget props');
-      } catch (e) {
-        console.log('[Settings] Could not save instance to widget props:', e);
-      }
-    }
-
-    // Also send via postMessage to ensure widget receives it immediately
-    if (instanceToken && typeof window !== 'undefined') {
-      try {
-        // Send to all iframes (the widget should be in an iframe)
-        window.parent.postMessage({
-          type: 'yoga-instance-token',
-          instance: instanceToken,
-          compId: compId
-        }, '*');
-        console.log('[Settings] ✅ Sent instance token via postMessage');
-      } catch (e) {
-        console.log('[Settings] Could not send postMessage:', e);
-      }
-    }
 
     isInitialized = true;
     return true;
