@@ -69,6 +69,16 @@ export async function initializeWixClient(): Promise<boolean> {
       }
     }
 
+    // Save instance token to widget props so widget can use it for authentication
+    if (instanceToken && wixClient.widget && wixClient.widget.setProp) {
+      try {
+        await wixClient.widget.setProp('instance', instanceToken);
+        console.log('[Settings] ✅ Saved instance token to widget props');
+      } catch (e) {
+        console.log('[Settings] Could not save instance to widget props:', e);
+      }
+    }
+
     isInitialized = true;
     return true;
   } catch (error) {
