@@ -22,11 +22,12 @@ if (typeof window !== 'undefined') {
 
 function generateCompId(): string {
   const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
-  let result = 'comp-';
+  const timestamp = Date.now(); // milliseconds
+  let randomPart = '';
   for (let i = 0; i < 8; i++) {
-    result += chars.charAt(Math.floor(Math.random() * chars.length));
+    randomPart += chars.charAt(Math.floor(Math.random() * chars.length));
   }
-  return result;
+  return `comp-${timestamp}-${randomPart}`;
 }
 
 export async function initializeWixClient(): Promise<boolean> {
@@ -41,30 +42,30 @@ export async function initializeWixClient(): Promise<boolean> {
       modules: { widget },
     });
 
-    // Try to get compId from widget props (this is how settings gets the widget's compId)
+    // Try to get compId from widget props (persisted site data)
     if (wixClient.widget && wixClient.widget.getProp) {
       try {
         const existingCompId = await wixClient.widget.getProp('compId');
         if (existingCompId) {
           compId = existingCompId as string;
-          console.log('[Settings] Got compId from widget props:', compId);
+          console.log('[Yoga Settings] ✅ Got existing compId from site data:', compId);
         }
       } catch (e) {
-        console.log('[Settings] Could not get compId from widget props:', e);
+        console.log('[Yoga Settings] ⚠️ Could not read compId from site data:', e);
       }
     }
 
-    // If no compId exists, generate one and save it to widget props
+    // If no compId exists, generate one and save it to widget props (site data)
     if (!compId) {
       compId = generateCompId();
-      console.log('[Settings] Generated new compId:', compId);
+      console.log('[Yoga Settings] 🆕 Generated new compId with timestamp:', compId);
 
       if (wixClient.widget && wixClient.widget.setProp) {
         try {
           await wixClient.widget.setProp('compId', compId);
-          console.log('[Settings] Saved compId to widget props');
+          console.log('[Yoga Settings] ✅ Saved compId to site data');
         } catch (e) {
-          console.log('[Settings] Could not save compId to widget props:', e);
+          console.error('[Yoga Settings] ❌ Could not save compId to site data:', e);
         }
       }
     }
@@ -73,12 +74,12 @@ export async function initializeWixClient(): Promise<boolean> {
     isInitialized = true;
     return true;
   } catch (error) {
-    console.error('[Settings] Wix SDK init failed:', error);
+    console.error('[Yoga Settings] ❌ Wix SDK init failed:', error);
 
     // Fallback: generate compId even if Wix SDK fails
     if (!compId) {
       compId = generateCompId();
-      console.log('[Settings] Fallback: Generated compId:', compId);
+      console.log('[Yoga Settings] 🔄 Fallback: Generated compId:', compId);
     }
 
     isInitialized = true;
@@ -89,7 +90,7 @@ export async function initializeWixClient(): Promise<boolean> {
 export async function fetchWithAuth(url: string, options?: RequestInit): Promise<Response> {
   // Ensure initialization is complete before making requests
   if (!isInitialized) {
-    console.log('[Settings] fetchWithAuth waiting for initialization...');
+    console.log('[Yoga Settings] fetchWithAuth waiting for initialization...');
     await initializeWixClient();
   }
 
@@ -98,7 +99,7 @@ export async function fetchWithAuth(url: string, options?: RequestInit): Promise
     ...(options?.headers as Record<string, string>),
   };
 
-  console.log('[Settings] fetchWithAuth using compId:', compId);
+  console.log('[Yoga Settings] fetchWithAuth using compId:', compId);
 
   if (compId) {
     headers['X-Wix-Comp-Id'] = compId;
@@ -114,7 +115,7 @@ export async function fetchWithAuth(url: string, options?: RequestInit): Promise
     try {
       return await wixClient.fetchWithAuth(url, fetchOptions);
     } catch (e) {
-      console.log('[Settings] wixClient.fetchWithAuth failed, falling back:', e);
+      console.log('[Yoga Settings] wixClient.fetchWithAuth failed, falling back:', e);
     }
   }
 
