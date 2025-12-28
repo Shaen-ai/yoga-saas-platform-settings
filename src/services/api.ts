@@ -292,6 +292,23 @@ export const aiGenerationAPI = {
   },
 };
 
+// Premium API
+export const premiumAPI = {
+  // Get premium status
+  getPremiumStatus: async (): Promise<{
+    vendorProductId: string | null;
+    premiumPlanName: string;
+    isPremium: boolean;
+  }> => {
+    try {
+      return await apiRequest('/premium-status', { method: 'GET' });
+    } catch (error) {
+      console.error('Failed to fetch premium status:', error);
+      throw error;
+    }
+  },
+};
+
 export default {
   settingsAPI,
   usersAPI,
@@ -299,4 +316,5 @@ export default {
   eventsAPI,
   yogaPlansAPI,
   aiGenerationAPI,
+  premiumAPI,
 };
