@@ -258,7 +258,7 @@ function AppContent() {
           animations: settings.behavior.animationsEnabled,
         };
 
-        await setWidgetProps(widgetProps);
+        await updateWidgetConfig(widgetProps, false);
         console.log('Widget properties updated');
       }
 
