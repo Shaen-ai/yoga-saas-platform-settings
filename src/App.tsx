@@ -341,45 +341,53 @@ function AppContent() {
         <Box className="sidebar">
           {/* Action buttons at top of sidebar */}
           <Box className="sidebar-actions" style={{ marginBottom: '16px' }}>
-            {/* Upgrade Button - Only show if not on highest plan */}
-            {premiumPlan !== 'business-pro' && (
+            {/* Upgrade and Dashboard buttons in one row */}
+            <Stack direction="row" spacing={1} width="100%" mb={1.5}>
+              {/* Upgrade Button - Only show if not on highest plan */}
+              {premiumPlan !== 'business-pro' && (
+                <Button
+                  variant="outlined"
+                  size="small"
+                  startIcon={<UpgradeIcon />}
+                  onClick={handleUpgrade}
+                  sx={{
+                    flex: 1,
+                    borderColor: '#3899EC',
+                    color: '#3899EC',
+                    '&:hover': {
+                      borderColor: '#2B7ACC',
+                      backgroundColor: '#3899EC08',
+                    },
+                    fontSize: '13px',
+                    fontWeight: 500,
+                    textTransform: 'none',
+                    py: 0.75
+                  }}
+                >
+                  Upgrade
+                </Button>
+              )}
               <Button
                 variant="outlined"
-                fullWidth
+                startIcon={<DashboardIcon />}
+                onClick={() => {
+                  console.log('Opening dashboard with URL:', dashboardUrl);
+                  window.open(dashboardUrl || buildDashboardUrl(), '_blank');
+                }}
+                className="dashboard-button"
                 size="small"
-                startIcon={<UpgradeIcon />}
-                onClick={handleUpgrade}
+                disabled={!dashboardUrl}
                 sx={{
-                  mb: 1.5,
-                  borderColor: '#3899EC',
-                  color: '#3899EC',
-                  '&:hover': {
-                    borderColor: '#2B7ACC',
-                    backgroundColor: '#3899EC08',
-                  },
+                  flex: 1,
                   fontSize: '13px',
                   fontWeight: 500,
                   textTransform: 'none',
                   py: 0.75
                 }}
               >
-                Upgrade Plan
+                Dashboard
               </Button>
-            )}
-            <Button
-              variant="outlined"
-              fullWidth
-              startIcon={<DashboardIcon />}
-              onClick={() => {
-                console.log('Opening dashboard with URL:', dashboardUrl);
-                window.open(dashboardUrl || buildDashboardUrl(), '_blank');
-              }}
-              className="dashboard-button"
-              size="medium"
-              disabled={!dashboardUrl}
-            >
-              Dashboard
-            </Button>
+            </Stack>
             <Button
               variant="contained"
               fullWidth
