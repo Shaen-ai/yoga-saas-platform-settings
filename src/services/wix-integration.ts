@@ -17,12 +17,18 @@ if (typeof window !== 'undefined') {
   const urlInstance = urlParams.get('instance');
   if (urlInstance) {
     instanceToken = urlInstance;
+    console.log('[Yoga Settings] 🔑 Instance token extracted from URL');
+  } else {
+    console.warn('[Yoga Settings] ⚠️ No instance token in URL - will rely on wixClient.fetchWithAuth');
   }
 }
 
+// ----------------------
+// Utility to generate a unique component ID
+// ----------------------
 function generateCompId(): string {
   const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
-  const timestamp = Date.now(); // milliseconds
+  const timestamp = Date.now();
   let randomPart = '';
   for (let i = 0; i < 8; i++) {
     randomPart += chars.charAt(Math.floor(Math.random() * chars.length));
@@ -30,19 +36,25 @@ function generateCompId(): string {
   return `comp-${timestamp}-${randomPart}`;
 }
 
+// ----------------------
+// Initialize Wix clients
+// ----------------------
 export async function initializeWixClient(): Promise<boolean> {
-  if (isInitialized && wixClient) {
-    return true;
-  }
+  if (isInitialized) return true;
 
   try {
+    console.log('[Yoga Settings] 🔄 Initializing Wix client...');
+
+    // Create Wix client with editor.host() and widget module
     wixClient = createClient({
-      auth: editor.auth(),
       host: editor.host(),
-      modules: { widget },
+      auth: editor.auth(),
+      modules: { widget }
     });
 
-    // Try to get compId from widget props (persisted site data)
+    console.log('[Yoga Settings] ✅ Wix client created');
+
+    // Try to get existing compId and instance from widget props (persisted site data)
     if (wixClient.widget && wixClient.widget.getProp) {
       try {
         const existingCompId = await wixClient.widget.getProp('compId');
@@ -50,15 +62,22 @@ export async function initializeWixClient(): Promise<boolean> {
           compId = existingCompId as string;
           console.log('[Yoga Settings] ✅ Got existing compId from site data:', compId);
         }
+
+        // Try to get instance token from widget props
+        const existingInstance = await wixClient.widget.getProp('instance');
+        if (existingInstance && !instanceToken) {
+          instanceToken = existingInstance as string;
+          console.log('[Yoga Settings] ✅ Got instance token from widget props');
+        }
       } catch (e) {
-        console.log('[Yoga Settings] ⚠️ Could not read compId from site data:', e);
+        console.warn('[Yoga Settings] ⚠️ Could not read props from site data:', e);
       }
     }
 
     // If no compId exists, generate one and save it to widget props (site data)
     if (!compId) {
       compId = generateCompId();
-      console.log('[Yoga Settings] 🆕 Generated new compId with timestamp:', compId);
+      console.log('[Yoga Settings] 🆕 Generated new compId:', compId);
 
       if (wixClient.widget && wixClient.widget.setProp) {
         try {
@@ -70,6 +89,13 @@ export async function initializeWixClient(): Promise<boolean> {
       }
     }
 
+    // Log authentication status
+    console.log('[Yoga Settings] 🔑 Authentication status:', {
+      hasInstanceToken: !!instanceToken,
+      hasCompId: !!compId,
+      hasWixClient: !!wixClient,
+      hasWixFetchWithAuth: !!(wixClient?.fetchWithAuth)
+    });
 
     isInitialized = true;
     return true;
@@ -87,73 +113,65 @@ export async function initializeWixClient(): Promise<boolean> {
   }
 }
 
+// ----------------------
+// Authenticated fetch
+// ----------------------
 export async function fetchWithAuth(url: string, options?: RequestInit): Promise<Response> {
-  // Ensure initialization is complete before making requests
-  if (!isInitialized) {
-    console.log('[Yoga Settings] fetchWithAuth waiting for initialization...');
-    await initializeWixClient();
-  }
-
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
     ...(options?.headers as Record<string, string>),
   };
 
-  console.log('[Yoga Settings] fetchWithAuth using compId:', compId);
-
+  // Add compId header only
   if (compId) {
     headers['X-Wix-Comp-Id'] = compId;
   }
 
-  const fetchOptions: RequestInit = {
-    ...options,
-    headers,
-  };
+  const fetchOptions: RequestInit = { ...options, headers };
 
-  // Use Wix SDK fetchWithAuth for proper authentication
-  if (wixClient && wixClient.fetchWithAuth) {
-    try {
-      return await wixClient.fetchWithAuth(url, fetchOptions);
-    } catch (e) {
-      console.log('[Yoga Settings] wixClient.fetchWithAuth failed, falling back:', e);
-    }
+  // Use wixClient.fetchWithAuth - it handles authentication
+  if (wixClient?.fetchWithAuth) {
+    console.log('[Yoga Settings] 📤 wixClient.fetchWithAuth:', url);
+    return await wixClient.fetchWithAuth(url, fetchOptions);
   }
 
-  // Fallback to regular fetch with manual token
-  if (instanceToken) {
-    headers['Authorization'] = instanceToken.startsWith('Bearer ') ? instanceToken : `Bearer ${instanceToken}`;
-  }
-
-  return fetch(url, { ...options, headers });
+  // Fallback
+  console.warn('[Yoga Settings] ⚠️ No Wix client');
+  return fetch(url, fetchOptions);
 }
 
-async function updateWidgetProperty(property: string, value: any): Promise<boolean> {
+// ----------------------
+// Update widget configuration
+// ----------------------
+export async function updateWidgetConfig(config: Record<string, any>, onlyChanged = false): Promise<boolean> {
   if (!wixClient || !wixClient.widget || !wixClient.widget.setProp) {
+    console.error('[Yoga Settings] ❌ Wix client or widget.setProp not available');
     return false;
   }
+
+  // If onlyChanged is true, only update the properties that are actually in the config object
+  // Otherwise, use all properties from config
+  const props = config;
 
   try {
-    await wixClient.widget.setProp(property, String(value));
+    console.log('[Yoga Settings] 📤 Calling widget.setProp for properties:', props);
+
+    // Set each property individually using setProp (singular)
+    for (const [key, value] of Object.entries(props)) {
+      await wixClient.widget.setProp(key, value);
+    }
+
+    console.log('[Yoga Settings] ✅ widget.setProp completed successfully for', Object.keys(props).length, 'properties');
     return true;
-  } catch {
+  } catch (error) {
+    console.error('[Yoga Settings] ❌ Failed to update widget config:', error);
     return false;
   }
 }
 
-export async function updateWidgetConfig(config: Record<string, any>): Promise<boolean> {
-  let success = true;
-
-  for (const [key, value] of Object.entries(config)) {
-    const result = await updateWidgetProperty(key, value);
-    if (!result) {
-      success = false;
-    }
-  }
-
-  await updateWidgetProperty('config', JSON.stringify(config));
-  return success;
-}
-
+// ----------------------
+// Exports (for external modules)
+// ----------------------
 export function setInstanceToken(token: string): void {
   instanceToken = token;
 }
@@ -170,18 +188,19 @@ export function getInstanceToken(): string | null {
   return instanceToken;
 }
 
+// ----------------------
+// Generate dashboard URL
+// ----------------------
 export function getDashboardUrl(baseUrl: string = 'https://yoga-dashboard.nextechspires.com/'): string {
   const url = new URL(baseUrl);
-  if (instanceToken) {
-    url.searchParams.set('instance', instanceToken);
-  }
-  if (compId) {
-    url.searchParams.set('compId', compId);
-  }
+  if (instanceToken) url.searchParams.set('instance', instanceToken);
+  if (compId) url.searchParams.set('compId', compId);
   return url.toString();
 }
 
+// ----------------------
 // Auto-initialize on module load
+// ----------------------
 if (typeof window !== 'undefined') {
   initializeWixClient();
 }
