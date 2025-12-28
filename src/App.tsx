@@ -268,13 +268,62 @@ function AppContent() {
   };
 
   const updateSetting = (section: string, key: string, value: any) => {
-    setSettings((prev: any) => ({
-      ...prev,
-      [section]: {
-        ...prev[section],
-        [key]: value
+    setSettings((prev: any) => {
+      const newSettings = {
+        ...prev,
+        [section]: {
+          ...prev[section],
+          [key]: value
+        }
+      };
+
+      // Update widget preview interactively without saving to backend
+      // Only update the specific changed property
+      const flattenedUpdate: Record<string, any> = {};
+
+      // Map nested settings to flat widget props
+      if (section === 'appearance') {
+        if (key === 'primaryColor') flattenedUpdate.primaryColor = value;
+        if (key === 'fontSize') flattenedUpdate.fontSize = value;
+        if (key === 'borderRadius') flattenedUpdate.borderRadius = value;
+      } else if (section === 'layout') {
+        if (key === 'defaultView') flattenedUpdate.defaultView = value;
+        if (key === 'defaultMode') flattenedUpdate.defaultMode = value;
+        if (key === 'defaultCalendarLayout') flattenedUpdate.defaultCalendarLayout = value;
+        if (key === 'calendarView') flattenedUpdate.calendarView = value;
+        if (key === 'showModeSwitcher') flattenedUpdate.showModeSwitcher = value;
+        if (key === 'showCalendarHeader') flattenedUpdate.showCalendarHeader = value;
+        if (key === 'headerTitle') flattenedUpdate.headerTitle = value;
+        if (key === 'compactMode') flattenedUpdate.compactMode = value;
+        if (key === 'showCreatePlanOption') flattenedUpdate.showCreatePlanOption = value;
+        if (key === 'showYogaClassesOption') flattenedUpdate.showYogaClassesOption = value;
+        if (key === 'showInstructorInfo') flattenedUpdate.showInstructorInfo = value;
+        if (key === 'showClassDuration') flattenedUpdate.showClassDuration = value;
+        if (key === 'showClassLevel') flattenedUpdate.showClassLevel = value;
+        if (key === 'showBookingButton') flattenedUpdate.showBookingButton = value;
+        if (key === 'showWaitlistOption') flattenedUpdate.showWaitlistOption = value;
+      } else if (section === 'behavior') {
+        if (key === 'language') flattenedUpdate.language = value;
+        if (key === 'animationsEnabled') flattenedUpdate.animations = value;
+      } else if (section === 'calendar') {
+        if (key === 'weekStartsOn') flattenedUpdate.weekStartsOn = value;
+        if (key === 'timeFormat') flattenedUpdate.timeFormat = value;
+        if (key === 'showEventTime') flattenedUpdate.showEventTime = value;
+      } else if (section === 'uiPreferences') {
+        if (key === 'clickAction') flattenedUpdate.clickAction = value;
       }
-    }));
+
+      // Update widget in background if we have changes
+      if (Object.keys(flattenedUpdate).length > 0 && isWixEnvironment()) {
+        Promise.resolve().then(() => {
+          setWidgetProps(flattenedUpdate).catch(err => {
+            console.error('[Settings] Failed to update widget preview:', err);
+          });
+        });
+      }
+
+      return newSettings;
+    });
   };
 
   const handleUpgrade = () => {
