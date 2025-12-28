@@ -20,8 +20,7 @@ import {
   ViewModule as ViewModuleIcon,
   CheckCircle as CheckIcon,
   Dashboard as DashboardIcon,
-  Upgrade as UpgradeIcon,
-  Star as StarIcon
+  Upgrade as UpgradeIcon
 } from '@mui/icons-material';
 import { ToastProvider, useToast } from './hooks/useToast';
 import { settingsAPI, premiumAPI } from './services/api';
@@ -278,26 +277,6 @@ function AppContent() {
     }));
   };
 
-  const getPlanDisplayName = (plan: string): string => {
-    const planNames: Record<string, string> = {
-      'free': 'Free',
-      'light': 'Light',
-      'business': 'Business',
-      'business-pro': 'Business Pro'
-    };
-    return planNames[plan] || 'Free';
-  };
-
-  const getPlanColor = (plan: string): string => {
-    const planColors: Record<string, string> = {
-      'free': '#94A3B8',
-      'light': '#3B82F6',
-      'business': '#8B5CF6',
-      'business-pro': '#F59E0B'
-    };
-    return planColors[plan] || '#94A3B8';
-  };
-
   const handleUpgrade = () => {
     const APP_ID = '74a1061c-62ad-4926-94d7-ef7a94bc1330';
     const upgradeUrl = `https://www.wix.com/apps/upgrade/${APP_ID}${instanceId ? `?appInstanceId=${instanceId}` : ''}`;
@@ -311,59 +290,33 @@ function AppContent() {
       <Box className="modern-layout no-header">
         {/* Sidebar Navigation */}
         <Box className="sidebar">
-          {/* Premium Plan Display */}
-          <Paper
-            elevation={0}
-            sx={{
-              p: 2,
-              mb: 2,
-              borderRadius: '8px',
-              border: '2px solid',
-              borderColor: getPlanColor(premiumPlan),
-              backgroundColor: `${getPlanColor(premiumPlan)}08`,
-            }}
-          >
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-              <StarIcon sx={{ fontSize: '20px', color: getPlanColor(premiumPlan) }} />
-              <Typography sx={{ fontSize: '13px', fontWeight: 600, color: '#334155' }}>
-                Current Plan
-              </Typography>
-            </Box>
-            <Typography
-              sx={{
-                fontSize: '18px',
-                fontWeight: 700,
-                color: getPlanColor(premiumPlan),
-                mb: premiumPlan !== 'business-pro' ? 1.5 : 0
-              }}
-            >
-              {getPlanDisplayName(premiumPlan)}
-            </Typography>
+          {/* Action buttons at top of sidebar */}
+          <Box className="sidebar-actions" style={{ marginBottom: '16px' }}>
+            {/* Upgrade Button - Only show if not on highest plan */}
             {premiumPlan !== 'business-pro' && (
               <Button
-                variant="contained"
+                variant="outlined"
                 fullWidth
                 size="small"
                 startIcon={<UpgradeIcon />}
                 onClick={handleUpgrade}
                 sx={{
-                  backgroundColor: getPlanColor(premiumPlan),
+                  mb: 1.5,
+                  borderColor: '#3899EC',
+                  color: '#3899EC',
                   '&:hover': {
-                    backgroundColor: getPlanColor(premiumPlan),
-                    opacity: 0.9
+                    borderColor: '#2B7ACC',
+                    backgroundColor: '#3899EC08',
                   },
-                  fontSize: '12px',
-                  fontWeight: 600,
-                  textTransform: 'none'
+                  fontSize: '13px',
+                  fontWeight: 500,
+                  textTransform: 'none',
+                  py: 0.75
                 }}
               >
                 Upgrade Plan
               </Button>
             )}
-          </Paper>
-
-          {/* Action buttons at top of sidebar */}
-          <Box className="sidebar-actions" style={{ marginBottom: '16px' }}>
             <Button
               variant="outlined"
               fullWidth
