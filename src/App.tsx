@@ -25,8 +25,8 @@ import {
 import { ToastProvider, useToast } from './hooks/useToast';
 import { settingsAPI, premiumAPI } from './services/api';
 import { storeWixParams, buildDashboardUrl, isWixEnvironment, setAuthInfo } from './utils/wixUtils';
-import { setWidgetProps, getWidgetProps, onSettingsUpdate, getEditorContext } from './services/wixEditor';
-import { getCompId, getInstanceToken } from './services/wix-integration';
+import { getWidgetProps, onSettingsUpdate, getEditorContext } from './services/wixEditor';
+import { getCompId, getInstanceToken, updateWidgetConfig } from './services/wix-integration';
 import './App.css';
 
 function AppContent() {
@@ -133,6 +133,12 @@ function AppContent() {
           const url = buildDashboardUrl(effectiveAuth);
           console.log('Dashboard URL built:', url);
           setDashboardUrl(url);
+
+          // Extract premium plan name from settings
+          if (data.premiumPlanName) {
+            console.log('Premium plan from settings:', data.premiumPlanName);
+            setPremiumPlan(data.premiumPlanName);
+          }
 
           setSettings((prev: any) => ({
             ...prev,
@@ -316,7 +322,7 @@ function AppContent() {
       // Update widget in background if we have changes
       if (Object.keys(flattenedUpdate).length > 0 && isWixEnvironment()) {
         Promise.resolve().then(() => {
-          setWidgetProps(flattenedUpdate).catch(err => {
+          updateWidgetConfig(flattenedUpdate, true).catch((err: any) => {
             console.error('[Settings] Failed to update widget preview:', err);
           });
         });
@@ -361,7 +367,8 @@ function AppContent() {
                     fontSize: '13px',
                     fontWeight: 500,
                     textTransform: 'none',
-                    py: 0.75
+                    py: 0.75,
+                    minWidth: 0
                   }}
                 >
                   Upgrade
@@ -379,10 +386,21 @@ function AppContent() {
                 disabled={!dashboardUrl}
                 sx={{
                   flex: 1,
+                  borderColor: 'rgba(0, 0, 0, 0.23)',
+                  color: 'rgba(0, 0, 0, 0.87)',
+                  '&:hover': {
+                    borderColor: 'rgba(0, 0, 0, 0.87)',
+                    backgroundColor: 'rgba(0, 0, 0, 0.04)',
+                  },
+                  '&.Mui-disabled': {
+                    borderColor: 'rgba(0, 0, 0, 0.12)',
+                    color: 'rgba(0, 0, 0, 0.26)',
+                  },
                   fontSize: '13px',
                   fontWeight: 500,
                   textTransform: 'none',
-                  py: 0.75
+                  py: 0.75,
+                  minWidth: 0
                 }}
               >
                 Dashboard

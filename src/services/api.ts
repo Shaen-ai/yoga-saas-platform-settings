@@ -11,6 +11,7 @@ interface UIPreferencesResponse {
   behavior?: any;
   uiPreferences?: any;
   auth?: AuthInfo;
+  premiumPlanName?: string;
 }
 
 // Initialize Wix client on module load and store the promise
