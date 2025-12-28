@@ -343,69 +343,10 @@ function AppContent() {
     <Box className="modern-settings-container">
       {/* Two Column Layout without header */}
       <Box className="modern-layout no-header">
-        {/* Sidebar Navigation */}
+        {/* Sidebar Navigation - Fixed */}
         <Box className="sidebar">
-          {/* Action buttons at top of sidebar */}
+          {/* Fixed action buttons */}
           <Box className="sidebar-actions" style={{ marginBottom: '16px' }}>
-            {/* Upgrade and Dashboard buttons in one row */}
-            <Stack direction="row" spacing={1} width="100%" mb={1.5}>
-              {/* Upgrade Button - Only show if not on highest plan */}
-              {premiumPlan !== 'business-pro' && (
-                <Button
-                  variant="outlined"
-                  size="small"
-                  startIcon={<UpgradeIcon />}
-                  onClick={handleUpgrade}
-                  sx={{
-                    flex: 1,
-                    borderColor: '#3899EC',
-                    color: '#3899EC',
-                    '&:hover': {
-                      borderColor: '#2B7ACC',
-                      backgroundColor: '#3899EC08',
-                    },
-                    fontSize: '13px',
-                    fontWeight: 500,
-                    textTransform: 'none',
-                    py: 0.75,
-                    minWidth: 0
-                  }}
-                >
-                  Upgrade
-                </Button>
-              )}
-              <Button
-                variant="outlined"
-                startIcon={<DashboardIcon />}
-                onClick={() => {
-                  console.log('Opening dashboard with URL:', dashboardUrl);
-                  window.open(dashboardUrl || buildDashboardUrl(), '_blank');
-                }}
-                className="dashboard-button"
-                size="small"
-                disabled={!dashboardUrl}
-                sx={{
-                  flex: 1,
-                  borderColor: 'rgba(0, 0, 0, 0.23)',
-                  color: 'rgba(0, 0, 0, 0.87)',
-                  '&:hover': {
-                    borderColor: 'rgba(0, 0, 0, 0.87)',
-                    backgroundColor: 'rgba(0, 0, 0, 0.04)',
-                  },
-                  '&.Mui-disabled': {
-                    borderColor: 'rgba(0, 0, 0, 0.12)',
-                    color: 'rgba(0, 0, 0, 0.26)',
-                  },
-                  fontSize: '13px',
-                  fontWeight: 500,
-                  textTransform: 'none',
-                  py: 0.75,
-                  minWidth: 0
-                }}
-              >
-                Dashboard
-              </Button>
-            </Stack>
             <Button
               variant="contained"
               fullWidth
@@ -436,9 +377,68 @@ function AppContent() {
           </nav>
         </Box>
 
-        {/* Main Content Area */}
+        {/* Main Content Area - Scrollable */}
         <Box className="main-content">
           <Box className="content-wrapper">
+            {/* Upgrade and Dashboard buttons - scrollable at top */}
+            <Box sx={{ mb: 2 }}>
+              {/* Upgrade Button - Only show if not on highest plan */}
+              {premiumPlan !== 'business-pro' && (
+                <Button
+                  variant="outlined"
+                  fullWidth
+                  size="medium"
+                  startIcon={<UpgradeIcon />}
+                  onClick={handleUpgrade}
+                  sx={{
+                    mb: 1.5,
+                    borderColor: '#3899EC',
+                    color: '#3899EC',
+                    '&:hover': {
+                      borderColor: '#2B7ACC',
+                      backgroundColor: '#3899EC08',
+                    },
+                    fontSize: '14px',
+                    fontWeight: 500,
+                    textTransform: 'none',
+                    py: 1
+                  }}
+                >
+                  Upgrade Plan
+                </Button>
+              )}
+              <Button
+                variant="outlined"
+                fullWidth
+                startIcon={<DashboardIcon />}
+                onClick={() => {
+                  console.log('Opening dashboard with URL:', dashboardUrl);
+                  window.open(dashboardUrl || buildDashboardUrl(), '_blank');
+                }}
+                className="dashboard-button"
+                size="medium"
+                disabled={!dashboardUrl}
+                sx={{
+                  mb: 2,
+                  borderColor: 'rgba(0, 0, 0, 0.23)',
+                  color: 'rgba(0, 0, 0, 0.87)',
+                  '&:hover': {
+                    borderColor: 'rgba(0, 0, 0, 0.87)',
+                    backgroundColor: 'rgba(0, 0, 0, 0.04)',
+                  },
+                  '&.Mui-disabled': {
+                    borderColor: 'rgba(0, 0, 0, 0.12)',
+                    color: 'rgba(0, 0, 0, 0.26)',
+                  },
+                  fontSize: '14px',
+                  fontWeight: 500,
+                  textTransform: 'none',
+                  py: 1
+                }}
+              >
+                Open Dashboard
+              </Button>
+            </Box>
         {/* Content Sections */}
       {activeSection === 'appearance' && (
         <Box className="settings-section">
