@@ -101,21 +101,27 @@ export const buildDashboardUrl = (authInfo?: AuthInfo): string => {
   // Get instance token: from API auth info first, then URL params
   const instance = effectiveAuthInfo?.instanceToken || urlParams.instance;
 
+  // Get instanceId: from API auth info (used for upgrade URL)
+  const instanceId = effectiveAuthInfo?.instanceId;
+
   // Log for debugging
   console.log('[WixUtils] Building dashboard URL:', {
     dashboardUrl,
     authInfoCompId: effectiveAuthInfo?.compId,
     authInfoInstance: effectiveAuthInfo?.instanceToken ? 'present' : 'null',
+    authInfoInstanceId: effectiveAuthInfo?.instanceId || 'null',
     urlParamsCompId: urlParams.compId,
     urlParamsInstance: urlParams.instance ? 'present' : 'null',
     finalCompId: compId,
-    finalInstance: instance ? 'present' : 'null'
+    finalInstance: instance ? 'present' : 'null',
+    finalInstanceId: instanceId || 'null'
   });
 
   // Build URL with Wix parameters
   const url = new URL(dashboardUrl);
   if (compId) url.searchParams.set('compId', compId);
   if (instance) url.searchParams.set('instance', instance);
+  if (instanceId) url.searchParams.set('instanceId', instanceId);
 
   return url.toString();
 };
