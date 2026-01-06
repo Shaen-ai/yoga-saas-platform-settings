@@ -5,6 +5,7 @@
 interface WixParams {
   compId?: string;
   instance?: string;
+  instanceId?: string;
   viewMode?: string;
   deviceType?: string;
 }
@@ -52,6 +53,7 @@ export const getWixParams = (): WixParams => {
   return {
     compId: params.get('compId') || params.get('comp_id') || undefined,
     instance: params.get('instance') || undefined,
+    instanceId: params.get('instanceId') || params.get('instance_id') || undefined,
     viewMode: params.get('viewMode') || params.get('view_mode') || undefined,
     deviceType: params.get('deviceType') || params.get('device_type') || undefined,
   };

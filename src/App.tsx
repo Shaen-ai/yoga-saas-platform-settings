@@ -24,7 +24,7 @@ import {
 } from '@mui/icons-material';
 import { ToastProvider, useToast } from './hooks/useToast';
 import { settingsAPI, premiumAPI } from './services/api';
-import { storeWixParams, buildDashboardUrl, isWixEnvironment, setAuthInfo } from './utils/wixUtils';
+import { storeWixParams, buildDashboardUrl, isWixEnvironment, setAuthInfo, getWixParams } from './utils/wixUtils';
 import { getWidgetProps, onSettingsUpdate, getEditorContext } from './services/wixEditor';
 import { getCompId, getInstanceToken, updateWidgetConfig } from './services/wix-integration';
 import './App.css';
@@ -334,8 +334,12 @@ function AppContent() {
 
   const handleUpgrade = () => {
     const APP_ID = '74a1061c-62ad-4926-94d7-ef7a94bc1330';
-    const upgradeUrl = `https://www.wix.com/apps/upgrade/${APP_ID}${instanceId ? `?appInstanceId=${instanceId}` : ''}`;
-    console.log('Opening upgrade URL:', upgradeUrl);
+
+    // Try to get instanceId from state, or fall back to URL parameter
+    const effectiveInstanceId = instanceId || getWixParams().instanceId;
+
+    const upgradeUrl = `https://www.wix.com/apps/upgrade/${APP_ID}${effectiveInstanceId ? `?appInstanceId=${effectiveInstanceId}` : ''}`;
+    console.log('Opening upgrade URL:', upgradeUrl, 'instanceId:', effectiveInstanceId);
     window.open(upgradeUrl, '_blank');
   };
 
